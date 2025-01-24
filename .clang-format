@@ -1,0 +1,70 @@
+---
+# SPDX-FileCopyrightText: 2021-2025 The Ikarus Developers mueller@ibb.uni-stuttgart.de
+# SPDX-License-Identifier: CC0-1.0
+BasedOnStyle: Google
+PointerAlignment: Left
+DerivePointerAlignment: false
+AccessModifierOffset: -2
+AlignTrailingComments: true
+AllowAllParametersOfDeclarationOnNextLine: false
+AlwaysBreakTemplateDeclarations: Yes
+AllowShortLoopsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+ColumnLimit: 120
+QualifierAlignment: Left
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+SortIncludes: CaseInsensitive
+BreakBeforeConceptDeclarations: true
+SpacesBeforeTrailingComments : 1
+AllowAllArgumentsOnNextLine: true
+AlignAfterOpenBracket: Align
+BinPackArguments: true
+BinPackParameters: true
+SpacesInAngles: Never
+AlignArrayOfStructures: Right
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: Never
+RequiresClausePosition: OwnLine
+SpacesInLineCommentPrefix:
+  Minimum: 1
+  Maximum: 1
+IndentRequiresClause: false
+IndentPPDirectives: BeforeHash
+AlignConsecutiveAssignments: true
+IndentWidth: 2
+BreakAfterAttributes: Leave
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterEnum: true
+  AfterStruct: true
+  AfterClass: true
+  SplitEmptyFunction: false
+  AfterFunction: false
+NamespaceIndentation: Inner
+SpaceAfterTemplateKeyword: true
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterControlStatements: true
+  AfterFunctionDefinitionName: false
+  AfterFunctionDeclarationName: false
+  AfterOverloadedOperator: false
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^(<|")muesli/'
+    Priority: 3
+    SortPriority: 3
+  - Regex: '^(<|")jlcxx/'
+    Priority: 4
+    SortPriority: 4
+  - Regex: '^(<|")julia'
+    Priority: 5
+    SortPriority: 5
+  - Regex:           '<([A-Za-z0-9.\/-_])+>'
+    Priority:        2
+    SortPriority: 2
+  - Regex:           '"([A-Za-z0-9.\/-_])+"'
+    Priority:        1
+    SortPriority: 1
+...

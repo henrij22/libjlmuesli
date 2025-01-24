@@ -1,0 +1,42 @@
+name: Check build
+on:
+  push:
+    paths-ignore:
+      - "**.md"
+
+  pull_request:
+    types: [opened]
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  Build:
+    name: ${{ matrix.config.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { name: "Ubuntu 24:04", container: "henrij22/ubuntu-base:latest" }
+    container:
+      image: ${{ matrix.config.container }}
+      options: --memory-swap="20g" --memory="20g" --cpus="2" --user root
+    env:
+      IKARUS_PYTHON_TEST_BUILD_TYPE_OVERRIDE: ${{ matrix.config.config }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: "repo"
+      - name: Build
+        working-directory: ./repo
+        run: |
+          mkdir cmake-build-${{ matrix.config.config }}
+          cd cmake-build-${{ matrix.config.config }}
+          cmake ../  -DCMAKE_BUILD_TYPE=${{ matrix.config.config }} -GNinja -DCMAKE_C_COMPILER=${{ matrix.config.compilerC }} -DCMAKE_CXX_COMPILER=${{ matrix.config.compilerCxx }}
+          cmake --build . --parallel 2 --target ikarus
+          cmake --build . --parallel 2 --target _ikarus
+          cmake --build . --parallel 2 --target build_${{ matrix.config.testRegex }}_tests
+      - name: Tests
+        working-directory: ./repo/cmake-build-${{ matrix.config.config }}
+        run: ctest --output-on-failure --parallel 2 -L ${{ matrix.config.testRegex }}
