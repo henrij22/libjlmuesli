@@ -30,7 +30,6 @@ inline void registerMaterialState(jlcxx::Module& mod) {
                 if (i >= ms.theVector.size()) {
                   throw std::out_of_range("Index out of range in getVector.");
                 }
-                // Convert ivector -> a Julia array
                 return iVectorToArrayRef(ms.theVector[i]);
               })
 

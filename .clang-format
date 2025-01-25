@@ -52,15 +52,18 @@ BreakBeforeBinaryOperators: None
 BreakBeforeTernaryOperators: true
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^(<|")muesli/'
+  - Regex: '^(<|")jlmuesli/'
     Priority: 3
     SortPriority: 3
-  - Regex: '^(<|")jlcxx/'
+  - Regex: '^(<|")muesli/'
     Priority: 4
     SortPriority: 4
-  - Regex: '^(<|")julia'
+  - Regex: '^(<|")jlcxx/'
     Priority: 5
     SortPriority: 5
+  - Regex: '^(<|")julia'
+    Priority: 6
+    SortPriority: 6
   - Regex:           '<([A-Za-z0-9.\/-_])+>'
     Priority:        2
     SortPriority: 2

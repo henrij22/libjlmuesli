@@ -1,21 +1,22 @@
 
 #pragma once
-#include "common.hh"
-#include "materialproperties.hh"
+#include <jlmuesli/util/common.hh>
+#include <jlmuesli/util/helpers.hh>
 
+#include <muesli/muesli.h>
 #include <muesli/Utils/utils.h>
 
 #include <jlcxx/jlcxx.hpp>
 
-template <typename Material, typename MaterialPoint, typename MaterialBase = muesli::material,
-          typename MaterialPointBase = muesli::materialPoint>
+template <typename Material, typename MaterialPoint, typename MaterialBase = muesli::finiteStrainMaterial,
+          typename MaterialPointBase = muesli::finiteStrainMP>
 auto registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name) {
   std::string matName = name + "Material";
   std::string mpName  = name + "MP";
 
   using jlcxx::arg;
 
-  auto mat = mod.add_type<Material>(matName, jlcxx::julia_base_type<muesli::material>());
+  auto mat = mod.add_type<Material>(matName, jlcxx::julia_base_type<MaterialBase>());
   mat.method("check", &Material::check);
   mat.method("print", [](Material& mat) { mat.print(std::cout); });
   // iso.method("getProperty", &Material::getProperty);
@@ -180,21 +181,12 @@ auto registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name) {
                 return itensorToArrayRef(mp.convergedDeformationGradient());
               })
       .method("deformationGradient", [](MaterialPoint& mp) { return itensorToArrayRef(mp.deformationGradient()); })
-      .method("getConvergedState",
-              [](MaterialPoint& mp) {
-                // returns materialState
-                // Make sure materialState is bound or returned properly in jlcxx
-                return mp.getConvergedState();
-              })
+      .method("getConvergedState", [](MaterialPoint& mp) { return mp.getConvergedState(); })
       .method("getCurrentState", [](MaterialPoint& mp) { return mp.getCurrentState(); })
 
       // --- Miscellaneous ---
       .method("density", [](MaterialPoint& mp) { return mp.density(); })
-      .method("plasticSlip",
-              [](MaterialPoint& mp) {
-                // pure virtual => must be implemented in derived class
-                return mp.plasticSlip();
-              })
+      .method("plasticSlip", [](MaterialPoint& mp) { return mp.plasticSlip(); })
       .method("waveVelocity", [](MaterialPoint& mp) { return mp.waveVelocity(); })
       // .method("parentMaterial",
       //         [](MaterialPoint& mp) -> const finiteStrainMaterial& {
