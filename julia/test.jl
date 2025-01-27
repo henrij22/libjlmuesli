@@ -9,14 +9,12 @@ function __init__()
     @initcxx
 end
 
-export ElasticIsotropicMaterial, ElasticIsotropicMP, NeoHookeMaterial, NeoHookeMP
-export stress, storedEnergy, tangentTensor
 end
 
 Emod = 1000.0
 ν = 0.25
-Λ, μ = FeaJiNL.toΛandμ(Emod=Emod, ν=ν)
-K = Emod/ (3 * ( 1 - 2ν))
+Λ, μ = FeaJiNL.toΛandμ(Emod = Emod, ν = ν)
+K = Emod / (3 * (1 - 2ν))
 
 mat = Muesli.ElasticIsotropicMaterial(Emod, ν)
 
@@ -39,7 +37,6 @@ C = [0.600872 -0.179083 0
      0 0 1]
 
 F = sqrt(C)
-
 
 tensors = Muesli.ArrayOfIsTensors()
 Muesli.push!(tensors, C)
@@ -71,4 +68,3 @@ yeohmp = Muesli.YeohMP(yeoh)
 Muesli.updateCurrentState(yeohmp, 0.0, F)
 Muesli.secondPiolaKirchhoffStress(yeohmp)
 tovoigt(SymmetricTensor{4, 3}(Muesli.convectedTangent(yeohmp)))
-

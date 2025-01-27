@@ -31,7 +31,7 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
         arg("Emod"), arg("nu"), arg("rho") = 1.0);
 
     mat.method("setConvergedState", [](MaterialPoint& mp, double theTime, jlcxx::ArrayRef<double, 2> strain_array) {
-      istensor strain = toIStensor(strain_array);
+      istensor strain = toIstensor(strain_array);
       mp.setConvergedState(theTime, strain);
     });
   }
@@ -48,9 +48,9 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
 
     mat.method("setConvergedState", [](MaterialPoint& mp, double theTime, JuliaTensor strain_array, double dg,
                                        JuliaTensor epn_array, double xin, JuliaTensor Xin_array) {
-      istensor strain = toIStensor(strain_array);
-      istensor epn    = toIStensor(epn_array);
-      istensor Xin    = toIStensor(Xin_array);
+      istensor strain = toIstensor(strain_array);
+      istensor epn    = toIstensor(epn_array);
+      istensor Xin    = toIstensor(Xin_array);
       mp.setConvergedState(theTime, strain, dg, epn, xin, Xin);
     });
   }
@@ -67,8 +67,8 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
         });
     mat.method("setConvergedState", [](MaterialPoint& mp, double theTime, JuliaTensor strain_array,
                                        ArrayOfTensorsT<istensor> epsv_arrays, JuliaTensor epsdev_array, double theta) {
-      istensor strain            = toIStensor(strain_array);
-      istensor epsdev            = toIStensor(epsdev_array);
+      istensor strain            = toIstensor(strain_array);
+      istensor epsdev            = toIstensor(epsdev_array);
       std::vector<istensor> epsv = epsv_arrays.tensors();
       mp.setConvergedState(theTime, strain, epsv, epsdev, theta);
     });
@@ -86,9 +86,9 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
 
     mat.method("setConvergedState", [](MaterialPoint& mp, const double theTime, const double dg, JuliaTensor epn_array,
                                        const double xin, JuliaTensor Xin_array, JuliaTensor strain_array) {
-      istensor strain = toIStensor(strain_array);
-      istensor epn    = toIStensor(epn_array);
-      istensor Xin    = toIStensor(Xin_array);
+      istensor strain = toIstensor(strain_array);
+      istensor epn    = toIstensor(epn_array);
+      istensor Xin    = toIstensor(Xin_array);
       mp.setConvergedState(theTime, dg, epn, xin, Xin, strain);
     });
   }

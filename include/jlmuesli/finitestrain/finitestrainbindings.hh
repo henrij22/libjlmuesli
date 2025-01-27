@@ -155,7 +155,7 @@ auto registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name) {
               })
       .method("convectedTangentTimesSymmetricTensor",
               [](MaterialPoint& mp, jlcxx::ArrayRef<double, 2> M_in) {
-                istensor M = toIStensor(M_in);
+                istensor M = toIstensor(M_in);
                 istensor CM;
                 mp.convectedTangentTimesSymmetricTensor(M, CM);
                 return itensorToArrayRef(CM);

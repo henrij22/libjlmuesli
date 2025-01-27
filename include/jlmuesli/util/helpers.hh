@@ -55,7 +55,7 @@ struct ArrayOfTensorsT
 
   void pushTensor(JuliaTensor tensor) {
     if constexpr (std::is_same_v<TensorType, istensor>)
-      tensors_.push_back(toIStensor(tensor));
+      tensors_.push_back(toIstensor(tensor));
     else
       tensors_.push_back(toITensor(tensor));
   }

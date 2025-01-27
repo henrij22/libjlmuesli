@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2021-2024 The Ikarus Developers mueller@ibb.uni-stuttgart.de
+# SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 # This file is intended to generate a CMake project for the Muesli material library, and is not part of said library
@@ -6,6 +6,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(muesli)
+project(muesli VERSION 1.0.0) 
 
 include_directories(".")
 
@@ -68,23 +69,34 @@ install(EXPORT muesli-targets
 
 include(CMakePackageConfigHelpers)
 
-# generate the config file that is includes the exports
+# Use -fPIC to generate position-independent code required for linking into shared libraries.
+set_property(TARGET muesli PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
+
+# Link the found libraries into your muesli target
+target_link_libraries(muesli
+    PUBLIC
+    ${BLAS_LIBRARIES}
+    ${LAPACK_LIBRARIES}
+)
+
+# generate the config file that includes the exports
 configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/MuesliConfig.cmake.in
   "${CMAKE_CURRENT_BINARY_DIR}/MuesliConfig.cmake"
-  INSTALL_DESTINATION "lib/cmake/example"
+  INSTALL_DESTINATION "lib/cmake/Muesli"  
   NO_SET_AND_CHECK_MACRO
   NO_CHECK_REQUIRED_COMPONENTS_MACRO
 )
 
+
 # generate the version file for the config file
 write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/MuesliConfigVersion.cmake"
-  VERSION "${muesli_VERSION_MAJOR}.${muesli_VERSION_MINOR}"
+  VERSION ${PROJECT_VERSION}
   COMPATIBILITY AnyNewerVersion
 )
-
-# Use -fPIC to generate position-independent code required for linking into shared libraries.
-set_property(TARGET muesli PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # install the configuration file
 install(FILES

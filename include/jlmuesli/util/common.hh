@@ -15,29 +15,28 @@ inline auto toMPM_Enu(double Emod, double nu) {
 }
 
 inline auto toIVector(jlcxx::ArrayRef<double, 1> vec) {
-  ivector ivec{};
-  for (const auto& v : vec)
-    ivec << v;
-  return ivec;
+  // Validate that the input is of size 3
+  if (vec.size() != 3)
+    throw std::invalid_argument("Input ArrayRef must be a 3 vector.");
+
+  return ivector{vec.data()};
 }
 
 inline auto iVectorToArrayRef(ivector ivec) { return jlcxx::ArrayRef<double, 1>{ivec.components()}; }
 
-inline auto toITensor(jlcxx::ArrayRef<double, 2> tensor) {
+inline auto toITensor(jlcxx::ArrayRef<double, 2> array) {
   // Validate that the input is 3x3
-  // if (tensor.size() != 9 || tensor.wrapped()->n_dims != 2 || tensor.wrapped()->dims[0] != 3 ||
-  //     tensor.wrapped()->dims[1] != 3) {
-  //   throw std::invalid_argument("Input ArrayRef must be a 3x3 array.");
-  // }
+  if (array.size() != 9)
+    throw std::invalid_argument("Input ArrayRef must be a 3x3 array.");
 
   // Extract data from ArrayRef
-  const double* data = tensor.data();
+  const double* data = array.data();
 
   // Construct the itensor using the 3x3 double array constructor
   return itensor(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8]);
 }
 
-inline jlcxx::ArrayRef<double, 2> itensorToArrayRef(const itensor& t) {
+inline jlcxx::ArrayRef<double, 2> itensorToArrayRef(const itensor& tensor) {
   // Cast jl_float64_type to jl_value_t* for jl_apply_array_type
   jl_value_t* array_type = jl_apply_array_type(reinterpret_cast<jl_value_t*>(jl_float64_type), 2);
 
@@ -50,7 +49,7 @@ inline jlcxx::ArrayRef<double, 2> itensorToArrayRef(const itensor& t) {
   // Populate the Julia array with data from the itensor
   for (size_t i = 0; i < 3; ++i) {
     for (size_t j = 0; j < 3; ++j) {
-      data[i * 3 + j] = t(i, j); // Row-major order
+      data[i * 3 + j] = tensor(i, j); // Row-major order
     }
   }
 
@@ -58,19 +57,12 @@ inline jlcxx::ArrayRef<double, 2> itensorToArrayRef(const itensor& t) {
   return jlcxx::ArrayRef<double, 2>(julia_array);
 }
 
-inline istensor toIStensor(const jlcxx::ArrayRef<double, 2>& arr) {
-  // 1) Check that the input array is 3×3.
-  //    - arr.size() should be 9 elements total.
-  //    - arr.wrapped()->dims[0], arr.wrapped()->dims[1] should each be 3.
-  //    - arr.wrapped()->n_dims should be 2.
-  // if(arr.size() != 9 || arr.wrapped()->n_dims != 2 ||
-  //    arr.wrapped()->dims[0] != 3 || arr.wrapped()->dims[1] != 3)
-  // {
-  //     throw std::invalid_argument("arrayRefToIstensor: Input ArrayRef must be a 3x3 array.");
-  // }
+inline istensor toIstensor(const jlcxx::ArrayRef<double, 2>& array) {
+  if (array.size() != 9)
+    throw std::invalid_argument("Input ArrayRef must be a 3x3 array.");
 
   // 2) Extract the raw data pointer in row-major order: data[i * 3 + j].
-  const double* data = arr.data();
+  const double* data = array.data();
 
   // 3) Read the six unique components for the symmetric matrix.
   //    According to istensor constructor:
@@ -124,20 +116,16 @@ inline jlcxx::ArrayRef<double, 2> istensorToArrayRef(const istensor& T) {
   return jlcxx::ArrayRef<double, 2>(julia_array);
 }
 
-inline itensor4 arrayRefToItensor4(const jlcxx::ArrayRef<double, 4>& arr) {
+inline itensor4 arrayRefToItensor4(const jlcxx::ArrayRef<double, 4>& array) {
   // Validate that the input array is 3x3x3x3
-  // if (arr.size() != 81 || arr.wrapped()->n_dims != 4 ||
-  //     arr.wrapped()->dims[0] != 3 || arr.wrapped()->dims[1] != 3 ||
-  //     arr.wrapped()->dims[2] != 3 || arr.wrapped()->dims[3] != 3)
-  // {
-  //     throw std::invalid_argument("arrayRefToItensor4: Input ArrayRef must be a 3x3x3x3 array.");
-  // }
+  if (array.size() != 81)
+    throw std::invalid_argument("Input ArrayRef must be a 3x3x3x3 array.");
 
   // Create an empty itensor4
   itensor4 T;
 
   // Populate the itensor4 from the ArrayRef
-  const double* data = arr.data();
+  const double* data = array.data();
   for (size_t i = 0; i < 3; ++i) {
     for (size_t j = 0; j < 3; ++j) {
       for (size_t k = 0; k < 3; ++k) {

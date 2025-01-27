@@ -152,7 +152,7 @@ auto registerSmallStrainMaterial(jlcxx::Module& mod, const std::string& name) {
                 .method("resetCurrentState", [](MaterialPoint& mp) { mp.resetCurrentState(); })
 
                 .method("updateCurrentState", [](MaterialPoint& mp, double t, JuliaTensor strain_array) {
-                  istensor strain = toIStensor(strain_array);
+                  istensor strain = toIstensor(strain_array);
                   mp.updateCurrentState(t, strain);
                 });
 
