@@ -2,14 +2,19 @@ name: Check build
 on:
   push:
     paths-ignore:
-      - "**.md"
+      - "**/*.md"
 
   pull_request:
     types: [opened]
     branches:
       - main
   workflow_dispatch:
-
+  
+concurrency:
+  # Skip intermediate builds: always.
+  # Cancel intermediate builds: only if it is a pull request build.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 jobs:
   Build:
     name: ${{ matrix.config.name }}
@@ -18,25 +23,37 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { name: "Ubuntu 24:04", container: "henrij22/ubuntu-base:latest" }
+          - {
+              name: "ubuntu-gcc",
+              container: "henrij22/ubuntu-julia-muesli:latest",
+            }
     container:
       image: ${{ matrix.config.container }}
       options: --memory-swap="20g" --memory="20g" --cpus="2" --user root
-    env:
-      IKARUS_PYTHON_TEST_BUILD_TYPE_OVERRIDE: ${{ matrix.config.config }}
     steps:
       - uses: actions/checkout@v4
         with:
           path: "repo"
+
       - name: Build
         working-directory: ./repo
         run: |
-          mkdir cmake-build-${{ matrix.config.config }}
-          cd cmake-build-${{ matrix.config.config }}
-          cmake ../  -DCMAKE_BUILD_TYPE=${{ matrix.config.config }} -GNinja -DCMAKE_C_COMPILER=${{ matrix.config.compilerC }} -DCMAKE_CXX_COMPILER=${{ matrix.config.compilerCxx }}
-          cmake --build . --parallel 2 --target ikarus
-          cmake --build . --parallel 2 --target _ikarus
-          cmake --build . --parallel 2 --target build_${{ matrix.config.testRegex }}_tests
-      - name: Tests
-        working-directory: ./repo/cmake-build-${{ matrix.config.config }}
-        run: ctest --output-on-failure --parallel 2 -L ${{ matrix.config.testRegex }}
+          # Create and navigate to the build directory
+          mkdir cmake-build-${{ matrix.config.name }}
+          cd cmake-build-${{ matrix.config.name }}
+          
+          # Read the contents of temp/prefix
+          if [ -f /tmp/prefix.txt ]; then
+            PREFIX_PATH=$(tr -d '\n' < /tmp/prefix.txt)
+            echo "CMAKE_PREFIX_PATH set to: '$PREFIX_PATH'"
+
+          else
+            echo "/tmp/prefix.txt file not found!"
+            exit 1
+          fi
+          
+          # Run CMake with the specified prefix path
+          cmake -DCMAKE_PREFIX_PATH="$PREFIX_PATH" ../
+          
+          # Build the target
+          cmake --build . --parallel 2 --target jlmuesli

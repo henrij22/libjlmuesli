@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     gdb  \
     nano \
     htop \
+    libopenblas-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth=1 https://gitlab.com/libeigen/eigen.git && \

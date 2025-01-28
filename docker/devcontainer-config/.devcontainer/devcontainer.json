@@ -1,0 +1,38 @@
+// SPDX-FileCopyrightText: 2024 Henrik Jakob jakob@ibb.uni-stuttgart.de
+// SPDX-License-Identifier: MIT
+
+{
+	"dockerComposeFile": [
+		"../docker-compose.yml"
+	],
+	"workspaceFolder": "/workspaces/libjlmuesli",
+	"service": "Container",
+	"shutdownAction": "stopCompose",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"llvm-vs-code-extensions.vscode-clangd",
+				"ms-vscode.cpptools",
+				"ms-vscode.cmake-tools",
+				"cschlosser.doxdocgen",
+				"julialang.language-julia"
+			],
+			"settings": {
+				"C_Cpp.intelliSenseEngine": "disabled",
+				// "cmake.configureArgs": [
+				// 	"-DADD_FORMATTARGET=1"
+				// ],
+				"clangd.arguments": [
+					"--compile-commands-dir=${workspaceFolder}/build",
+					"--completion-style=detailed",
+					"--header-insertion=never",
+					"-pretty"
+				],
+				"clangd.path": "/usr/bin/clangd-18",
+				"cmake.automaticReconfigure": false,
+				"cmake.configureOnEdit": false,
+				"clang-format.executable": "/usr/bin/clang-format-18"
+			}
+		}
+	}
+}
