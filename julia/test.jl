@@ -1,7 +1,6 @@
-using FeaJiNL
 using LinearAlgebra
 
-module Muesli
+module MuesliTest
 using CxxWrap
 @wrapmodule(()->joinpath("/home/henri/dev/libjlmuesli/build/lib/", "libjlmuesli"))
 
@@ -11,26 +10,34 @@ end
 
 end
 
+function toΛandμ(; Emod::AbstractFloat, ν::AbstractFloat)
+    μ = Emod / (2 + 2 * ν)
+    Λ = Emod * ν / ((1 + ν) * (1 - 2ν))
+    Λ, μ
+end
+
 Emod = 1000.0
 ν = 0.25
-Λ, μ = FeaJiNL.toΛandμ(Emod = Emod, ν = ν)
+Λ, μ = toΛandμ(Emod = Emod, ν = ν)
 K = Emod / (3 * (1 - 2ν))
 
-mat = Muesli.ElasticIsotropicMaterial(Emod, ν)
+mat = MuesliTest.ElasticIsotropicMaterial(Emod, ν)
 
-properties = Muesli.MaterialProperties()
-Muesli.setProperty!(properties, "young", Emod)
-Muesli.setProperty!(properties, "poisson", ν)
-Muesli.getProperty(properties, "young")
+mp_ = MuesliTest.createMaterialPoint(mat)
 
-Muesli.getProperty(mat, Muesli.PR_POISSON)
+properties = MuesliTest.MaterialProperties()
+MuesliTest.setProperty!(properties, "young", Emod)
+MuesliTest.setProperty!(properties, "poisson", ν)
+MuesliTest.getProperty(properties, "young")
 
-mat2 = Muesli.ElasticIsotropicMaterial(properties)
-Muesli.print(mat2)
+MuesliTest.getProperty(mat, MuesliTest.PR_POISSON)
 
-Muesli.check(mat2)
+mat2 = MuesliTest.ElasticIsotropicMaterial(properties)
+MuesliTest.print(mat2)
 
-mp = Muesli.ElasticIsotropicMP(mat)
+MuesliTest.check(mat2)
+
+mp = MuesliTest.ElasticIsotropicMP(mat)
 
 C = [0.600872 -0.179083 0
      -0.179083 0.859121 0
@@ -38,33 +45,33 @@ C = [0.600872 -0.179083 0
 
 F = sqrt(C)
 
-tensors = Muesli.ArrayOfIsTensors()
-Muesli.push!(tensors, C)
-Muesli.clear!(tensors)
-Int(Muesli.size(tensors))
+tensors = MuesliTest.ArrayOfIsTensors()
+MuesliTest.push!(tensors, C)
+MuesliTest.clear!(tensors)
+Int(MuesliTest.size(tensors))
 
 using Tensors
-Muesli.updateCurrentState(mp, 1.0, C)
+MuesliTest.updateCurrentState(mp, 1.0, C)
 
-Muesli.stress(mp)
-Muesli.storedEnergy(mp)
-CC = SymmetricTensor{4, 3}(Muesli.tangentTensor(mp));
+MuesliTest.stress(mp)
+MuesliTest.storedEnergy(mp)
+CC = SymmetricTensor{4, 3}(MuesliTest.tangentTensor(mp));
 tovoigt(Array, CC)
 
-nh = Muesli.NeoHookeMaterial(properties)
-nhmp = Muesli.NeoHookeMP(nh)
-Muesli.updateCurrentState(nhmp, 0.0, F)
-Muesli.secondPiolaKirchhoffStress(nhmp)
-tovoigt(SymmetricTensor{4, 3}(Muesli.convectedTangent(nhmp)))
+nh = MuesliTest.NeoHookeMaterial(properties)
+nhmp = MuesliTest.NeoHookeMP(nh)
+MuesliTest.updateCurrentState(nhmp, 0.0, F)
+MuesliTest.secondPiolaKirchhoffStress(nhmp)
+tovoigt(SymmetricTensor{4, 3}(MuesliTest.convectedTangent(nhmp)))
 
-svk = Muesli.SVKMaterial(properties)
-svkmp = Muesli.SVKMP(svk)
-Muesli.updateCurrentState(svkmp, 0.0, F)
-Muesli.secondPiolaKirchhoffStress(svkmp)
-tovoigt(SymmetricTensor{4, 3}(Muesli.convectedTangent(svkmp)))
+svk = MuesliTest.SVKMaterial(properties)
+svkmp = MuesliTest.SVKMP(svk)
+MuesliTest.updateCurrentState(svkmp, 0.0, F)
+MuesliTest.secondPiolaKirchhoffStress(svkmp)
+tovoigt(SymmetricTensor{4, 3}(MuesliTest.convectedTangent(svkmp)))
 
-yeoh = Muesli.YeohMaterial(μ / 2, μ / 6, μ / 3, K, true)
-yeohmp = Muesli.YeohMP(yeoh)
-Muesli.updateCurrentState(yeohmp, 0.0, F)
-Muesli.secondPiolaKirchhoffStress(yeohmp)
-tovoigt(SymmetricTensor{4, 3}(Muesli.convectedTangent(yeohmp)))
+yeoh = MuesliTest.YeohMaterial(μ / 2, μ / 6, μ / 3, K, true)
+yeohmp = MuesliTest.YeohMP(yeoh)
+MuesliTest.updateCurrentState(yeohmp, 0.0, F)
+MuesliTest.secondPiolaKirchhoffStress(yeohmp)
+tovoigt(SymmetricTensor{4, 3}(MuesliTest.convectedTangent(yeohmp)))

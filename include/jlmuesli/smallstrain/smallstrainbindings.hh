@@ -7,24 +7,26 @@
 
 #include <jlcxx/jlcxx.hpp>
 
-template <typename Material, typename MaterialPoint, typename MaterialBase = muesli::smallStrainMaterial,
+template <typename Material, typename MaterialPoint, bool registerConvergedState = true, typename MaterialBase = muesli::smallStrainMaterial,
           typename MaterialPointBase = muesli::smallStrainMP>
 auto registerSmallStrainMaterial(jlcxx::Module& mod, const std::string& name) {
   using jlcxx::arg;
-
-  using JuliaTensor = jlcxx::ArrayRef<double, 2>;
-  using JuliaVector = jlcxx::ArrayRef<double, 1>;
 
   std::string matName = name + "Material";
   std::string mpName  = name + "MP";
 
   auto mat = mod.add_type<Material>(matName, jlcxx::julia_base_type<MaterialBase>());
   mat.method("check", &Material::check);
-  mat.method("print", [](Material& mat) { mat.print(std::cout); });
+  mat.method("print", [](Material& mat) {
+    mat.print(std::cout);
+    std::cout << std::endl;
+  });
   mat.method("getProperty", &Material::getProperty);
 
   mat.constructor([](const MaterialProperties& properties) { return new Material{"Elastic", properties.multiMap()}; },
                   arg("properties"));
+
+  mat.method("createMaterialPoint", &Material::createMaterialPoint);
 
   auto mp = mod.add_type<MaterialPoint>(mpName, jlcxx::julia_base_type<MaterialPointBase>())
                 .constructor([](const Material& sm) { return new MaterialPoint(sm); })
@@ -155,6 +157,13 @@ auto registerSmallStrainMaterial(jlcxx::Module& mod, const std::string& name) {
                   istensor strain = toIstensor(strain_array);
                   mp.updateCurrentState(t, strain);
                 });
+
+if constexpr (registerConvergedState) {
+      mat.method("setConvergedState", [](MaterialPoint& mp, double theTime, jlcxx::ArrayRef<double, 2> strain_array) {
+      istensor strain = toIstensor(strain_array);
+      mp.setConvergedState(theTime, strain);
+    });
+}
 
   return std::make_tuple(mat, mp);
 }

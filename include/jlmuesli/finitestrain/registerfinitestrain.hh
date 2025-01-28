@@ -50,7 +50,6 @@ inline void registerFiniteStrainMaterials(jlcxx::Module& mod) {
         },
         arg("alpha0"), arg("alpha1"), arg("alpha2"), arg("incompressible") = true);
   }
-
   {
     using Material      = muesli::arrudaboyceMaterial;
     using MaterialPoint = muesli::arrudaboyceMP;
@@ -60,7 +59,6 @@ inline void registerFiniteStrainMaterials(jlcxx::Module& mod) {
                        bool compressible) { return new Material{"ArrudaBoyce", C1, lambdam, bulk, compressible}; },
                     arg("C1"), arg("lambdam"), arg("bulk"), arg("compressible"));
   }
-
   {
     using Material      = muesli::yeohMaterial;
     using MaterialPoint = muesli::yeohMP;

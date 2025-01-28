@@ -1,5 +1,8 @@
 
 #pragma once
+#include <cstddef>
+#include <string>
+
 #include <muesli/Math/mtensor.h>
 #include <muesli/muesli.h>
 
@@ -14,29 +17,40 @@ inline auto toMPM_Enu(double Emod, double nu) {
   return mpm;
 }
 
-inline auto toIVector(jlcxx::ArrayRef<double, 1> vec) {
-  // Validate that the input is of size 3
-  if (vec.size() != 3)
-    throw std::invalid_argument("Input ArrayRef must be a 3 vector.");
+using JuliaTensor = jlcxx::ArrayRef<double, 2>;
+using JuliaVector = jlcxx::ArrayRef<double, 1>;
 
+inline const double* assertSizeAndExtractData(JuliaVector c, size_t expectedSize) {
+  if (c.size() != expectedSize)
+    throw std::invalid_argument("Input has to be a " + std::to_string(expectedSize) + " vector.");
+  const double* data = c.data();
+  return data;
+}
+
+inline const double* assertSizeAndExtractData(JuliaTensor c, std::pair<size_t, size_t> expectedSizes) {
+  if (c.size() != expectedSizes.first * expectedSizes.second)
+    throw std::invalid_argument("Input has to be a " + std::to_string(expectedSizes.first) + " x " +
+                                std::to_string(expectedSizes.second) + " matrix.");
+  const double* data = c.data();
+  return data;
+}
+
+inline auto toIVector(JuliaVector vec) {
+  const double* data = assertSizeAndExtractData(vec, 3);
   return ivector{vec.data()};
 }
 
-inline auto iVectorToArrayRef(ivector ivec) { return jlcxx::ArrayRef<double, 1>{ivec.components()}; }
+inline auto iVectorToArrayRef(ivector ivec) { return JuliaVector{ivec.components()}; }
 
-inline auto toITensor(jlcxx::ArrayRef<double, 2> array) {
+inline auto toITensor(JuliaTensor array) {
   // Validate that the input is 3x3
-  if (array.size() != 9)
-    throw std::invalid_argument("Input ArrayRef must be a 3x3 array.");
-
-  // Extract data from ArrayRef
-  const double* data = array.data();
+  const double* data = assertSizeAndExtractData(array, {3, 3});
 
   // Construct the itensor using the 3x3 double array constructor
   return itensor(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8]);
 }
 
-inline jlcxx::ArrayRef<double, 2> itensorToArrayRef(const itensor& tensor) {
+inline JuliaTensor itensorToArrayRef(const itensor& tensor) {
   // Cast jl_float64_type to jl_value_t* for jl_apply_array_type
   jl_value_t* array_type = jl_apply_array_type(reinterpret_cast<jl_value_t*>(jl_float64_type), 2);
 
@@ -47,22 +61,17 @@ inline jlcxx::ArrayRef<double, 2> itensorToArrayRef(const itensor& tensor) {
   double* data = jl_array_data(julia_array, double);
 
   // Populate the Julia array with data from the itensor
-  for (size_t i = 0; i < 3; ++i) {
-    for (size_t j = 0; j < 3; ++j) {
+  for (size_t i = 0; i < 3; ++i)
+    for (size_t j = 0; j < 3; ++j)
       data[i * 3 + j] = tensor(i, j); // Row-major order
-    }
-  }
 
   // Wrap the Julia array in a jlcxx::ArrayRef
-  return jlcxx::ArrayRef<double, 2>(julia_array);
+  return JuliaTensor(julia_array);
 }
 
-inline istensor toIstensor(const jlcxx::ArrayRef<double, 2>& array) {
-  if (array.size() != 9)
-    throw std::invalid_argument("Input ArrayRef must be a 3x3 array.");
-
+inline istensor toIstensor(const JuliaTensor& array) {
   // 2) Extract the raw data pointer in row-major order: data[i * 3 + j].
-  const double* data = array.data();
+  const double* data = assertSizeAndExtractData(array, {3, 3});
 
   // 3) Read the six unique components for the symmetric matrix.
   //    According to istensor constructor:
@@ -90,7 +99,7 @@ inline istensor toIstensor(const jlcxx::ArrayRef<double, 2>& array) {
   return istensor(t00, t11, t22, t12, t20, t01);
 }
 
-inline jlcxx::ArrayRef<double, 2> istensorToArrayRef(const istensor& T) {
+inline JuliaTensor istensorToArrayRef(const istensor& T) {
   // 1) Allocate a 3×3 Julia array of Float64.
   //    Note: jl_apply_array_type() expects a jl_value_t*, so we cast jl_float64_type.
   jl_value_t* arr_type    = jl_apply_array_type(reinterpret_cast<jl_value_t*>(jl_float64_type), 2);
@@ -113,7 +122,7 @@ inline jlcxx::ArrayRef<double, 2> istensorToArrayRef(const istensor& T) {
   data_ptr[2 * 3 + 2] = T(2, 2);
 
   // 4) Wrap it in a jlcxx::ArrayRef and return.
-  return jlcxx::ArrayRef<double, 2>(julia_array);
+  return JuliaTensor(julia_array);
 }
 
 inline itensor4 arrayRefToItensor4(const jlcxx::ArrayRef<double, 4>& array) {
@@ -126,15 +135,11 @@ inline itensor4 arrayRefToItensor4(const jlcxx::ArrayRef<double, 4>& array) {
 
   // Populate the itensor4 from the ArrayRef
   const double* data = array.data();
-  for (size_t i = 0; i < 3; ++i) {
-    for (size_t j = 0; j < 3; ++j) {
-      for (size_t k = 0; k < 3; ++k) {
-        for (size_t l = 0; l < 3; ++l) {
+  for (size_t i = 0; i < 3; ++i)
+    for (size_t j = 0; j < 3; ++j)
+      for (size_t k = 0; k < 3; ++k)
+        for (size_t l = 0; l < 3; ++l)
           T(i, j, k, l) = data[i * 27 + j * 9 + k * 3 + l];
-        }
-      }
-    }
-  }
 
   return T;
 }
@@ -153,15 +158,11 @@ inline jlcxx::ArrayRef<double, 4> itensor4ToArrayRef(const itensor4& T) {
   double* data_ptr = jl_array_data(julia_array, double);
 
   // Copy data from the itensor4 into the Julia array
-  for (size_t i = 0; i < 3; ++i) {
-    for (size_t j = 0; j < 3; ++j) {
-      for (size_t k = 0; k < 3; ++k) {
-        for (size_t l = 0; l < 3; ++l) {
+  for (size_t i = 0; i < 3; ++i)
+    for (size_t j = 0; j < 3; ++j)
+      for (size_t k = 0; k < 3; ++k)
+        for (size_t l = 0; l < 3; ++l)
           data_ptr[i * 27 + j * 9 + k * 3 + l] = T(i, j, k, l);
-        }
-      }
-    }
-  }
 
   // Wrap the Julia array in a jlcxx::ArrayRef and return
   return jlcxx::ArrayRef<double, 4>(julia_array);

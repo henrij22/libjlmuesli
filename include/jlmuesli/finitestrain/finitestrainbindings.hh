@@ -18,8 +18,11 @@ auto registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name) {
 
   auto mat = mod.add_type<Material>(matName, jlcxx::julia_base_type<MaterialBase>());
   mat.method("check", &Material::check);
-  mat.method("print", [](Material& mat) { mat.print(std::cout); });
-  // iso.method("getProperty", &Material::getProperty);
+  mat.method("print", [](Material& mat) {
+    mat.print(std::cout);
+    std::cout << std::endl;
+  });
+  mat.method("getProperty", &Material::getProperty);
 
   mat.constructor([](const MaterialProperties& properties) { return new Material{"Finite", properties.multiMap()}; },
                   arg("properties"));
