@@ -1,4 +1,5 @@
 # libjlmuesli
+[![Check build](https://github.com/henrij22/libjlmuesli/actions/workflows/check_build.yml/badge.svg)](https://github.com/henrij22/libjlmuesli/actions/workflows/check_build.yml)
 
 Set your `CMAKE_PREFIX_PATH` to something like 
 
@@ -13,3 +14,8 @@ The path for `CMAKE_PREFIX_PATH` can be obtained from Julia using:
 julia> using CxxWrap
 julia> CxxWrap.prefix_path()
 ```
+
+## Prerequisits
+
+- a blas and lapack library
+- muesli library from https://bitbucket.org/ignromero/muesli/src/master/
