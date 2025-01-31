@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
+# SPDX-License-Identifier: MIT
+
 using LinearAlgebra
 
 module MuesliTest

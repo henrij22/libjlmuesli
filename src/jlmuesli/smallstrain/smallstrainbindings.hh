@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 #include <jlmuesli/util/common.hh>
@@ -7,8 +9,8 @@
 
 #include <jlcxx/jlcxx.hpp>
 
-template <typename Material, typename MaterialPoint, bool registerConvergedState = true, typename MaterialBase = muesli::smallStrainMaterial,
-          typename MaterialPointBase = muesli::smallStrainMP>
+template <typename Material, typename MaterialPoint, bool registerConvergedState = true,
+          typename MaterialBase = muesli::smallStrainMaterial, typename MaterialPointBase = muesli::smallStrainMP>
 auto registerSmallStrainMaterial(jlcxx::Module& mod, const std::string& name) {
   using jlcxx::arg;
 
@@ -157,12 +159,12 @@ auto registerSmallStrainMaterial(jlcxx::Module& mod, const std::string& name) {
                   mp.updateCurrentState(t, strain);
                 });
 
-if constexpr (registerConvergedState) {
-      mat.method("setConvergedState", [](MaterialPoint& mp, double theTime, jlcxx::ArrayRef<double, 2> strain_array) {
+  if constexpr (registerConvergedState) {
+    mat.method("setConvergedState", [](MaterialPoint& mp, double theTime, jlcxx::ArrayRef<double, 2> strain_array) {
       istensor strain = toIstensor(strain_array);
       mp.setConvergedState(theTime, strain);
     });
-}
+  }
 
   return std::make_tuple(mat, mp);
 }

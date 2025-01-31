@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: 2021-2025 The Ikarus Developers mueller@ibb.uni-stuttgart.de
+# SPDX-License-Identifier: CC0-1.0
+
+# partially taken from https://github.com/ikarus-project/ikarus/blob/main/cmake/FormatTarget/CMakeLists.txt
+
+name: CodeStyle
+
+on:
+  push:
+    paths-ignore:
+      - ".github/workflows/ghpages.yml"
+  pull_request:
+    types: [opened]
+    branches:
+      - main
+    paths-ignore:
+      - ".github/workflows/ghpages.yml"
+  workflow_dispatch:
+
+env:
+  CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm_modules
+
+jobs:
+  format-check:
+    name: Check for formatting errors
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: "**/cpm_modules"
+          key: ${{ github.workflow }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
+      - uses: actions/checkout@v4
+        with:
+          path: "repo"
+      - name: Install format dependencies
+        run: |
+          pip install clang-format==18.1.8
+          clang-format --version
+          pip install cmake_format==0.6.13 pyyaml
+
+      - name: configure
+        run: cmake -S "cmake/FormatTarget" -Bbuild -DADD_FORMATTARGET=TRUE

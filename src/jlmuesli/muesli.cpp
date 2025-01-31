@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "jlmuesli/util/helpers.hh"
 #include <jlmuesli/finitestrain/registerfinitestrain.hh>

@@ -1,13 +1,4 @@
-add_library(jlmuesli SHARED
-  muesli.cpp
-)
+# SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de SPDX-License-Identifier:
+# GPL-3.0-or-later
 
-# target_include_directories(jlmuesli
-#     PUBLIC 
-#         # This makes the headers visible while building (the source tree)
-#         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#         # This makes the headers visible after installing (the install tree)
-#         $<INSTALL_INTERFACE:include> 
-# )
-
-
+add_subdirectory(jlmuesli)

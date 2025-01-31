@@ -1,3 +1,0 @@
-add_subdirectory(util)
-add_subdirectory(smallstrain)
-add_subdirectory(finitestrain)

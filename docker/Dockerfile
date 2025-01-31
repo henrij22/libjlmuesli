@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
+# SPDX-License-Identifier: MIT
+
 # Use Ubuntu 24.04 as the base image
 FROM ubuntu:24.04
 
@@ -18,6 +21,8 @@ RUN apt-get update && apt-get install -y \
     nano \
     htop \
     libopenblas-dev \
+    clang-format \
+    cmake-format \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth=1 https://gitlab.com/libeigen/eigen.git && \

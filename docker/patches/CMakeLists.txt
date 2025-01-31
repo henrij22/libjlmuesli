@@ -1,19 +1,22 @@
-# SPDX-FileCopyrightText: 2021-2024 The Ikarus Developers mueller@ibb.uni-stuttgart.de
-# SPDX-License-Identifier: LGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de SPDX-License-Identifier:
+# GPL-3.0-or-later
 
-# This file is intended to generate a CMake project for the Muesli material library, and is not part of said library
+# This file is intended to generate a CMake project for the Muesli material library, and is not part
+# of said library
 
 cmake_minimum_required(VERSION 3.10)
 
 project(muesli)
-project(muesli VERSION 1.0.0) 
+project(muesli VERSION 1.0.0)
 
 include_directories(".")
 
-set(CMAKE_CXX_STANDARD 17)          
-set(CMAKE_CXX_STANDARD_REQUIRED ON) 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-file(GLOB SRC_FILES
+file(
+  GLOB
+  SRC_FILES
   "muesli/*.cpp"
   "muesli/Damage/*.cpp"
   "muesli/Datadriven/*.cpp"
@@ -30,7 +33,9 @@ file(GLOB SRC_FILES
   "muesli/Utils/*.cpp"
 )
 
-file(GLOB HEADER_FILES
+file(
+  GLOB
+  HEADER_FILES
   "muesli/*.h"
   "muesli/Damage/*.h"
   "muesli/Datadriven/*.h"
@@ -49,23 +54,27 @@ file(GLOB HEADER_FILES
 
 add_library(muesli SHARED ${SRC_FILES} ${HEADER_FILES})
 
-target_include_directories(muesli
-  PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-  $<INSTALL_INTERFACE:include>
+target_include_directories(
+  muesli PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:include>
 )
-install(TARGETS muesli EXPORT muesli-targets
+install(
+  TARGETS muesli
+  EXPORT muesli-targets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
 )
 
-install(DIRECTORY muesli
+install(
+  DIRECTORY muesli
   DESTINATION include/
-  FILES_MATCHING PATTERN "*.h"
+  FILES_MATCHING
+  PATTERN "*.h"
 )
-install(EXPORT muesli-targets
+install(
+  EXPORT muesli-targets
   FILE MuesliTargets.cmake
-  DESTINATION lib/cmake/Muesli)
+  DESTINATION lib/cmake/Muesli
+)
 
 include(CMakePackageConfigHelpers)
 
@@ -76,20 +85,14 @@ find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 
 # Link the found libraries into your muesli target
-target_link_libraries(muesli
-    PUBLIC
-    ${BLAS_LIBRARIES}
-    ${LAPACK_LIBRARIES}
-)
+target_link_libraries(muesli PUBLIC ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 
 # generate the config file that includes the exports
-configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/MuesliConfig.cmake.in
-  "${CMAKE_CURRENT_BINARY_DIR}/MuesliConfig.cmake"
-  INSTALL_DESTINATION "lib/cmake/Muesli"  
-  NO_SET_AND_CHECK_MACRO
-  NO_CHECK_REQUIRED_COMPONENTS_MACRO
+configure_package_config_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/MuesliConfig.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/MuesliConfig.cmake"
+  INSTALL_DESTINATION "lib/cmake/Muesli"
+  NO_SET_AND_CHECK_MACRO NO_CHECK_REQUIRED_COMPONENTS_MACRO
 )
-
 
 # generate the version file for the config file
 write_basic_package_version_file(
@@ -99,7 +102,4 @@ write_basic_package_version_file(
 )
 
 # install the configuration file
-install(FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/MuesliConfig.cmake
-  DESTINATION lib/cmake/Muesli
-)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/MuesliConfig.cmake DESTINATION lib/cmake/Muesli)

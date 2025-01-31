@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 style = "sciml"
 margin = 108
 align_assignment = true
