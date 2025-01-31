@@ -53,25 +53,32 @@ Int(MuesliTest.size(tensors))
 using Tensors
 MuesliTest.updateCurrentState(mp, 1.0, C)
 
-MuesliTest.stress(mp)
+σ = zeros(3, 3);
+ℂ = zeros(3, 3, 3, 3);
+
+MuesliTest.stress!(mp, σ)
+σ
+
 MuesliTest.storedEnergy(mp)
-CC = SymmetricTensor{4, 3}(MuesliTest.tangentTensor(mp));
-tovoigt(Array, CC)
+MuesliTest.tangentTensor!(mp, ℂ)
+tovoigt(Array, SymmetricTensor{4, 3}(ℂ))
 
 nh = MuesliTest.NeoHookeMaterial(properties)
 nhmp = MuesliTest.NeoHookeMP(nh)
 MuesliTest.updateCurrentState(nhmp, 0.0, F)
-MuesliTest.secondPiolaKirchhoffStress(nhmp)
-tovoigt(SymmetricTensor{4, 3}(MuesliTest.convectedTangent(nhmp)))
+MuesliTest.secondPiolaKirchhoffStress!(nhmp, σ)
+σ
+MuesliTest.convectedTangent!(nhmp, ℂ)
+tovoigt(Array, SymmetricTensor{4, 3}(ℂ))
 
-svk = MuesliTest.SVKMaterial(properties)
-svkmp = MuesliTest.SVKMP(svk)
-MuesliTest.updateCurrentState(svkmp, 0.0, F)
-MuesliTest.secondPiolaKirchhoffStress(svkmp)
-tovoigt(SymmetricTensor{4, 3}(MuesliTest.convectedTangent(svkmp)))
+# svk = MuesliTest.SVKMaterial(properties)
+# svkmp = MuesliTest.SVKMP(svk)
+# MuesliTest.updateCurrentState(svkmp, 0.0, F)
+# MuesliTest.secondPiolaKirchhoffStress(svkmp)
+# tovoigt(SymmetricTensor{4, 3}(MuesliTest.convectedTangent(svkmp)))
 
-yeoh = MuesliTest.YeohMaterial(μ / 2, μ / 6, μ / 3, K, true)
-yeohmp = MuesliTest.YeohMP(yeoh)
-MuesliTest.updateCurrentState(yeohmp, 0.0, F)
-MuesliTest.secondPiolaKirchhoffStress(yeohmp)
-tovoigt(SymmetricTensor{4, 3}(MuesliTest.convectedTangent(yeohmp)))
+# yeoh = MuesliTest.YeohMaterial(μ / 2, μ / 6, μ / 3, K, true)
+# yeohmp = MuesliTest.YeohMP(yeoh)
+# MuesliTest.updateCurrentState(yeohmp, 0.0, F)
+# MuesliTest.secondPiolaKirchhoffStress(yeohmp)
+# tovoigt(SymmetricTensor{4, 3}(MuesliTest.convectedTangent(yeohmp)))

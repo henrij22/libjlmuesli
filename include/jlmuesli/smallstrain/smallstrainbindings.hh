@@ -33,37 +33,36 @@ auto registerSmallStrainMaterial(jlcxx::Module& mod, const std::string& name) {
                 // ----------------------------------------------------------------------
                 // 3D response
                 // ----------------------------------------------------------------------
-                .method("contractWithDeviatoricTangent",
-                        [](MaterialPoint& mp, JuliaVector v1, JuliaVector v2) {
+                .method("contractWithDeviatoricTangent!",
+                        [](MaterialPoint& mp, JuliaVector v1, JuliaVector v2, JuliaTensor T) {
                           itensor result;
                           mp.contractWithDeviatoricTangent(toIVector(v1), toIVector(v2), result);
-                          return itensorToArrayRef(result);
+                          itensorToArrayRef(result, T);
                         })
 
-                .method("contractWithTangent",
-                        [](MaterialPoint& mp, JuliaVector v1, JuliaVector v2) {
+                .method("contractWithTangent!",
+                        [](MaterialPoint& mp, JuliaVector v1, JuliaVector v2, JuliaTensor T) {
                           itensor result;
                           mp.contractWithTangent(toIVector(v1), toIVector(v2), result);
-                          return itensorToArrayRef(result);
+                          itensorToArrayRef(result, T);
                         })
 
-                .method("dissipationTangent",
-                        [](MaterialPoint& mp) {
+                .method("dissipationTangent!",
+                        [](MaterialPoint& mp, JuliaTensor4 T) {
                           itensor4 D;
                           mp.dissipationTangent(D);
-                          // Convert itensor4 to a Julia-compatible array
-                          return itensor4ToArrayRef(D);
+                          itensor4ToArrayRef(D, T);
                         })
 
                 .method("plasticSlip", [](MaterialPoint& mp) { return mp.plasticSlip(); })
 
                 .method("shearStiffness", [](MaterialPoint& mp) { return mp.shearStiffness(); })
 
-                .method("tangentTensor",
-                        [](MaterialPoint& mp) {
+                .method("tangentTensor!",
+                        [](MaterialPoint& mp, JuliaTensor4 T) {
                           itensor4 C;
                           mp.tangentTensor(C);
-                          return itensor4ToArrayRef(C);
+                          itensor4ToArrayRef(C, T);
                         })
 
                 .method("tangentMatrix",
@@ -112,34 +111,34 @@ auto registerSmallStrainMaterial(jlcxx::Module& mod, const std::string& name) {
                 // ----------------------------------------------------------------------
                 .method("pressure", [](MaterialPoint& mp) { return mp.pressure(); })
 
-                .method("stress",
-                        [](MaterialPoint& mp) {
+                .method("stress!",
+                        [](MaterialPoint& mp, JuliaTensor T) {
                           istensor sigma;
                           mp.stress(sigma);
                           // Convert to array (6 components for a symmetric tensor, etc.)
-                          return itensorToArrayRef(sigma);
+                          itensorToArrayRef(sigma, T);
                         })
 
-                .method("deviatoricStress",
-                        [](MaterialPoint& mp) {
-                          istensor s;
-                          mp.deviatoricStress(s);
-                          return itensorToArrayRef(s);
+                .method("deviatoricStress!",
+                        [](MaterialPoint& mp, JuliaTensor T) {
+                          istensor sigma;
+                          mp.deviatoricStress(sigma);
+                          itensorToArrayRef(sigma, T);
                         })
 
                 // ----------------------------------------------------------------------
                 // Strains / States
                 // ----------------------------------------------------------------------
-                .method("getConvergedPlasticStrain",
-                        [](MaterialPoint& mp) {
+                .method("getConvergedPlasticStrain!",
+                        [](MaterialPoint& mp, JuliaTensor T) {
                           istensor epsp = mp.getConvergedPlasticStrain();
-                          return itensorToArrayRef(epsp);
+                          itensorToArrayRef(epsp, T);
                         })
 
-                .method("getCurrentPlasticStrain",
-                        [](MaterialPoint& mp) {
+                .method("getCurrentPlasticStrain!",
+                        [](MaterialPoint& mp, JuliaTensor T) {
                           istensor epsp = mp.getCurrentPlasticStrain();
-                          return itensorToArrayRef(epsp);
+                          itensorToArrayRef(epsp, T);
                         })
 
                 .method("getConvergedState", [](MaterialPoint& mp) { return mp.getConvergedState(); })

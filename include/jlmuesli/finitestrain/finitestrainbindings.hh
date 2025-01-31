@@ -45,10 +45,10 @@ auto registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name) {
 
       // --- Energies ---
       .method("energyDissipationInStep", [](MaterialPoint& mp) { return mp.energyDissipationInStep(); })
-      .method("dissipatedEnergyDF",
-              [](MaterialPoint& mp) {
+      .method("dissipatedEnergyDF!",
+              [](MaterialPoint& mp, JuliaTensor T) {
                 itensor e = mp.dissipatedEnergyDF();
-                return itensorToArrayRef(e);
+                itensorToArrayRef(e, T);
               })
       .method("dissipatedEnergyDTheta", [](MaterialPoint& mp) { return mp.dissipatedEnergyDTheta(); })
       .method("kineticPotential", [](MaterialPoint& mp) { return mp.kineticPotential(); })
@@ -56,67 +56,67 @@ auto registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name) {
       .method("storedEnergy", [](MaterialPoint& mp) { return mp.storedEnergy(); })
 
       // --- Stresses ---
-      .method("CauchyStress",
-              [](MaterialPoint& mp) {
+      .method("CauchyStress!",
+              [](MaterialPoint& mp, JuliaTensor T) {
                 istensor sigma;
                 mp.CauchyStress(sigma);
-                return itensorToArrayRef(sigma);
+                itensorToArrayRef(sigma, T);
               })
-      .method("energyMomentumTensor",
-              [](MaterialPoint& mp) {
+      .method("energyMomentumTensor!",
+              [](MaterialPoint& mp, JuliaTensor T) {
                 itensor S;
                 mp.energyMomentumTensor(S);
-                return itensorToArrayRef(S);
+                itensorToArrayRef(S, T);
               })
-      .method("firstPiolaKirchhoffStress",
-              [](MaterialPoint& mp) {
+      .method("firstPiolaKirchhoffStress!",
+              [](MaterialPoint& mp, JuliaTensor T) {
                 itensor P;
                 mp.firstPiolaKirchhoffStress(P);
-                return itensorToArrayRef(P);
+                itensorToArrayRef(P, T);
               })
-      .method("firstPiolaKirchhoffStressNumerical",
-              [](MaterialPoint& mp) {
+      .method("firstPiolaKirchhoffStressNumerical!",
+              [](MaterialPoint& mp, JuliaTensor T) {
                 itensor P;
                 mp.firstPiolaKirchhoffStressNumerical(P);
-                return itensorToArrayRef(P);
+                itensorToArrayRef(P, T);
               })
-      .method("KirchhoffStress",
-              [](MaterialPoint& mp) {
+      .method("KirchhoffStress!",
+              [](MaterialPoint& mp, JuliaTensor T) {
                 istensor tau;
                 mp.KirchhoffStress(tau);
-                return itensorToArrayRef(tau);
+                itensorToArrayRef(tau, T);
               })
-      .method("secondPiolaKirchhoffStress",
-              [](MaterialPoint& mp) {
+      .method("secondPiolaKirchhoffStress!",
+              [](MaterialPoint& mp, JuliaTensor T) {
                 istensor S;
                 mp.secondPiolaKirchhoffStress(S);
-                return itensorToArrayRef(S);
+                return itensorToArrayRef(S, T);
               })
-      .method("secondPiolaKirchhoffStressNumerical",
-              [](MaterialPoint& mp) {
+      .method("secondPiolaKirchhoffStressNumerical!",
+              [](MaterialPoint& mp, JuliaTensor T) {
                 istensor S;
                 mp.secondPiolaKirchhoffStressNumerical(S);
-                return itensorToArrayRef(S);
+                return itensorToArrayRef(S, T);
               })
 
       // --- Elasticity tangents ---
-      .method("convectedTangent",
-              [](MaterialPoint& mp) {
+      .method("convectedTangent!",
+              [](MaterialPoint& mp, JuliaTensor4 T) {
                 itensor4 c;
                 mp.convectedTangent(c);
-                return itensor4ToArrayRef(c);
+                return itensor4ToArrayRef(c, T);
               })
-      .method("materialTangent",
-              [](MaterialPoint& mp) {
+      .method("materialTangent!",
+              [](MaterialPoint& mp, JuliaTensor4 T) {
                 itensor4 c;
                 mp.materialTangent(c);
-                return itensor4ToArrayRef(c);
+                return itensor4ToArrayRef(c, T);
               })
-      .method("spatialTangent",
-              [](MaterialPoint& mp) {
+      .method("spatialTangent!",
+              [](MaterialPoint& mp, JuliaTensor4 T) {
                 itensor4 c;
                 mp.spatialTangent(c);
-                return itensor4ToArrayRef(c);
+                itensor4ToArrayRef(c, T);
               })
 
       // --- Tangent contractions ---
@@ -132,36 +132,36 @@ auto registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name) {
       //           // Tvol is double
       //           return std::make_tuple(itensorToArrayRef(Tdev), itensorToArrayRef(Tmixed), Tvol);
       //         })
-      .method("contractWithConvectedTangent",
-              [](MaterialPoint& mp, jlcxx::ArrayRef<double, 1> v1, jlcxx::ArrayRef<double, 1> v2) {
+      .method("contractWithConvectedTangent!",
+              [](MaterialPoint& mp, jlcxx::ArrayRef<double, 1> v1, jlcxx::ArrayRef<double, 1> v2, JuliaTensor TT) {
                 itensor T;
                 mp.contractWithConvectedTangent(toIVector(v1), toIVector(v2), T);
-                return itensorToArrayRef(T);
+                itensorToArrayRef(T, TT);
               })
-      .method("contractWithSpatialTangent",
-              [](MaterialPoint& mp, jlcxx::ArrayRef<double, 1> v1, jlcxx::ArrayRef<double, 1> v2) {
+      .method("contractWithSpatialTangent!",
+              [](MaterialPoint& mp, jlcxx::ArrayRef<double, 1> v1, jlcxx::ArrayRef<double, 1> v2, JuliaTensor TT) {
                 itensor T;
                 mp.contractWithSpatialTangent(toIVector(v1), toIVector(v2), T);
-                return itensorToArrayRef(T);
+                itensorToArrayRef(T, TT);
               })
-      .method("contractWithDeviatoricTangent",
-              [](MaterialPoint& mp, jlcxx::ArrayRef<double, 1> v1, jlcxx::ArrayRef<double, 1> v2) {
+      .method("contractWithDeviatoricTangent!",
+              [](MaterialPoint& mp, jlcxx::ArrayRef<double, 1> v1, jlcxx::ArrayRef<double, 1> v2, JuliaTensor TT) {
                 itensor T;
                 mp.contractWithDeviatoricTangent(toIVector(v1), toIVector(v2), T);
-                return itensorToArrayRef(T);
+                itensorToArrayRef(T, TT);
               })
-      .method("contractWithMixedTangent",
-              [](MaterialPoint& mp) {
+      .method("contractWithMixedTangent!",
+              [](MaterialPoint& mp, JuliaTensor T) {
                 istensor CM;
                 mp.contractWithMixedTangent(CM);
-                return itensorToArrayRef(CM);
+                itensorToArrayRef(CM, T);
               })
-      .method("convectedTangentTimesSymmetricTensor",
-              [](MaterialPoint& mp, jlcxx::ArrayRef<double, 2> M_in) {
+      .method("convectedTangentTimesSymmetricTensor!",
+              [](MaterialPoint& mp, JuliaTensor M_in, JuliaTensor T) {
                 istensor M = toIstensor(M_in);
                 istensor CM;
                 mp.convectedTangentTimesSymmetricTensor(M, CM);
-                return itensorToArrayRef(CM);
+                itensorToArrayRef(CM, T);
               })
       .method("volumetricStiffness", [](MaterialPoint& mp) { return mp.volumetricStiffness(); })
 
@@ -169,7 +169,7 @@ auto registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name) {
       .method("commitCurrentState", [](MaterialPoint& mp) { mp.commitCurrentState(); })
       .method("resetCurrentState", [](MaterialPoint& mp) { mp.resetCurrentState(); })
       .method("updateCurrentState",
-              [](MaterialPoint& mp, double theTime, jlcxx::ArrayRef<double, 2> F_in) {
+              [](MaterialPoint& mp, double theTime, JuliaTensor F_in) {
                 itensor F = toITensor(F_in);
                 mp.updateCurrentState(theTime, F);
               })
@@ -177,13 +177,16 @@ auto registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name) {
       // --- Extract state ---
       // For convergedDeformationGradient, we have both const and non-const versions in C++.
       // We'll just expose one that returns the current content (read-only in Julia).
-      .method("convergedDeformationGradient",
-              [](MaterialPoint& mp) {
-                // returns const itensor& or itensor&
-                // We'll call the const version explicitly if needed.
-                return itensorToArrayRef(mp.convergedDeformationGradient());
+      .method("convergedDeformationGradient!",
+              [](MaterialPoint& mp, JuliaTensor T) {
+                itensor F = mp.convergedDeformationGradient();
+                return itensorToArrayRef(F, T);
               })
-      .method("deformationGradient", [](MaterialPoint& mp) { return itensorToArrayRef(mp.deformationGradient()); })
+      .method("deformationGradient",
+              [](MaterialPoint& mp, JuliaTensor T) {
+                itensor F = mp.deformationGradient();
+                return itensorToArrayRef(F, T);
+              })
       .method("getConvergedState", [](MaterialPoint& mp) { return mp.getConvergedState(); })
       .method("getCurrentState", [](MaterialPoint& mp) { return mp.getCurrentState(); })
 
