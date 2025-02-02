@@ -94,7 +94,7 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
     auto [mat, mp] = registerSmallStrainMaterial<Material, MaterialPoint, false>(mod, "Viscoelastic");
 
     mat.constructor([](double E, double nu, double rho, size_t nvisco, JuliaVector eta, JuliaVector tau) {
-      return new Material{"Splastic", E, nu, rho, nvisco, eta.data(), tau.data()};
+      return new Material{"Viscoelastic", E, nu, rho, nvisco, eta.data(), tau.data()};
     });
     mat.method("setConvergedState", [](MaterialPoint& mp, double theTime, JuliaTensor strain_array,
                                        ArrayOfTensorsT<istensor> epsv_arrays, JuliaTensor epsdev_array, double theta) {

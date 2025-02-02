@@ -73,15 +73,14 @@ auto registerSmallStrainMaterial(jlcxx::Module& mod, const std::string& name) {
                           double C[6][6];
                           mp.tangentMatrix(C);
 
-                          // Flatten into a 36-element std::vector (or whatever is
-                          // most convenient for you to return to Julia)
+                          // Flatten into a 36-element std::vector
                           std::vector<double> result(36);
                           for (int i = 0; i < 6; ++i) {
                             for (int j = 0; j < 6; ++j) {
                               result[i * 6 + j] = C[i][j];
                             }
                           }
-                          return result; // Julia will see this as a Vector{Float64}
+                          return result;
                         })
 
                 .method("volumetricStiffness", [](MaterialPoint& mp) { return mp.volumetricStiffness(); })
