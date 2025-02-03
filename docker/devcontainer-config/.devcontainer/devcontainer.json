@@ -2,12 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 {
-	"dockerComposeFile": [
-		"../docker-compose.yml"
-	],
-	"workspaceFolder": "/workspaces/libjlmuesli",
-	"service": "Container",
-	"shutdownAction": "stopCompose",
+	"image": "henrij22/ubuntu-julia-muesli:latest",
 	"customizations": {
 		"vscode": {
 			"extensions": [

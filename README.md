@@ -14,6 +14,6 @@ julia> using CxxWrap
 julia> CxxWrap.prefix_path()
 ```
 
-## Prerequisits
+## Requisits
 
 - muesli library from https://bitbucket.org/ignromero/muesli/src/master/

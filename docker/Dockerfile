@@ -9,6 +9,8 @@ LABEL maintainer=jakob@ibb.uni-stuttgart.de
 # Install system packages, including build-essential, cmake, gcc, clang, and julia
 RUN apt-get update && apt-get install -y \
     build-essential \
+    python3 \
+    python3-pip \
     cmake \
     gcc \
     clang \
@@ -21,9 +23,16 @@ RUN apt-get update && apt-get install -y \
     nano \
     htop \
     libopenblas-dev \
-    clang-format \
-    cmake-format \
+    # clang-format \
+    # cmake-format \
     && rm -rf /var/lib/apt/lists/*
+
+RUN  update-alternatives --install /usr/bin/python python /usr/bin/python3.11 11
+
+RUN  python -m pip install --upgrade pip --break-system-packages && \
+    python -m pip install --no-cache-dir --break-system-packages \
+    cmakelang==0.6.13 \
+    clang-format==18.1.8 \
 
 RUN git clone --depth=1 https://gitlab.com/libeigen/eigen.git && \
     cd eigen && \
@@ -38,7 +47,7 @@ RUN curl -fsSL https://install.julialang.org | sh -s -- -y
 
 ENV PATH=/root/.juliaup/bin:${PATH}
 
-RUN julia -e 'using Pkg; Pkg.add("CxxWrap");Pkg.precompile(); import CxxWrap;  open("/tmp/prefix.txt", "w") do f write(f, CxxWrap.prefix_path()) end'
+RUN julia -e 'using Pkg; Pkg.add("CxxWrap"); import CxxWrap; open("/tmp/prefix.txt", "w") do f write(f, CxxWrap.prefix_path()) end'
 
 
 RUN git clone https://bitbucket.org/ignromero/muesli.git && \
