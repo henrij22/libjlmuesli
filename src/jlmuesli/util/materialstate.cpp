@@ -1,13 +1,8 @@
 // SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#pragma once
-
 #include "common.hh"
-
-#include <muesli/Utils/utils.h>
-
-#include <jlcxx/jlcxx.hpp>
+#include "utils.hh"
 
 inline void registerMaterialState(jlcxx::Module& mod) {
   using namespace muesli;

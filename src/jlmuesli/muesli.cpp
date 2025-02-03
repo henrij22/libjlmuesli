@@ -1,12 +1,10 @@
 // SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "jlmuesli/util/helpers.hh"
 #include <jlmuesli/finitestrain/registerfinitestrain.hh>
 #include <jlmuesli/smallstrain/registersmallstrain.hh>
 #include <jlmuesli/util/common.hh>
-#include <jlmuesli/util/materialstate.hh>
-#include <jlmuesli/util/propertynames.hh>
+#include <jlmuesli/util/utils.hh>
 
 #include <muesli/muesli.h>
 
@@ -21,6 +19,7 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
   registerHelpers(mod);
   registerMaterialState(mod);
   registerPropertyName(mod);
+  // registerTensors(mod);
 
   // Register base classes (important?)
   mod.add_type<muesli::material>("Material");

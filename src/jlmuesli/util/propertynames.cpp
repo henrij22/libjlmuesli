@@ -1,10 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#pragma once
-#include <muesli/muesli.h>
-
-#include <jlcxx/jlcxx.hpp>
+#include "utils.hh"
 
 inline void registerPropertyName(jlcxx::Module& mod) {
   // Shorthand
