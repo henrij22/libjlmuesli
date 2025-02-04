@@ -4,8 +4,14 @@
 using LinearAlgebra
 
 module MuesliTest
+path_to_lib = "/workspaces/libjlmuesli/build/lib/"
+
+if (!isempty(ARGS))
+    path_to_lib = ARGS[1]
+end
+
 using CxxWrap
-@wrapmodule(()->joinpath("/workspaces/libjlmuesli/build/lib/", "libjlmuesli"))
+@wrapmodule(()->joinpath(path_to_lib, "libjlmuesli"))
 
 function __init__()
     @initcxx
@@ -37,11 +43,11 @@ using BenchmarkTools
 
 vec = MuesliTest.Ivector(1.0, 2.0, 3.0)
 vec = [1.0, 2.0, 3.0]
-@benchmark MuesliTest.Itensor(vec, vec, vec)
+MuesliTest.Itensor(vec, vec, vec)
 T = [1.0 2.0 3.0
      4.0 5.0 6.0
      5.0 3.0 2.3]
-@benchmark MuesliTest.Itensor(T)
+MuesliTest.Itensor(T)
 
 Base.IndexStyle(::MuesliTest.Itensor) = IndexLinear()
 Base.getindex(v::MuesliTest.Itensor, i::Int, j::Int) = MuesliTest.cxxgetindex(v, i, j)[]
@@ -104,7 +110,6 @@ C = [0.600872 -0.179083 0
 F_ = sqrt(C)
 F = MuesliTest.Itensor(F_)
 
-
 # tensors = MuesliTest.ArrayOfIsTensors()
 # MuesliTest.push!(tensors, C)
 # MuesliTest.clear!(tensors)
@@ -127,7 +132,6 @@ nh = MuesliTest.NeoHookeMaterial(properties)
 nhmp = MuesliTest.NeoHookeMP(nh)
 MuesliTest.updateCurrentState(nhmp, 0.0, F)
 MuesliTest.secondPiolaKirchhoffStress!(nhmp, σ)
-
 
 # σ
 # MuesliTest.convectedTangent!(nhmp, ℂ)

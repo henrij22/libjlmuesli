@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#pragma once
+#include <jlmuesli/finitestrain/registerfinitestrain.hh>
 #include <jlmuesli/util/common.hh>
 #include <jlmuesli/util/utils.hh>
 
@@ -10,9 +10,8 @@
 
 #include <jlcxx/jlcxx.hpp>
 
-template <typename Material, typename MaterialPoint, typename MaterialBase = muesli::finiteStrainMaterial,
-          typename MaterialPointBase = muesli::finiteStrainMP>
-auto registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name) {
+template <typename Material, typename MaterialPoint, typename MaterialBase, typename MaterialPointBase>
+jlcxx::TypeWrapper<Material> registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name) {
   std::string matName = name + "Material";
   std::string mpName  = name + "MP";
 
@@ -128,3 +127,16 @@ auto registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name) {
 
   return mat;
 }
+
+// Explicitly instantiate templates
+#define INSTANTIATE_FINITE_STRAIN_MATERIAL(Material, MaterialMP, Invariants, MPType) \
+    template jlcxx::TypeWrapper<Material> registerFiniteStrainMaterial<Material, MaterialMP, Invariants, MPType>( \
+        jlcxx::Module&, const std::string&);
+
+// Use the macro for explicit instantiations
+INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::neohookeanMaterial, muesli::neohookeanMP, muesli::f_invariants, muesli::fisotropicMP)
+INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::svkMaterial, muesli::svkMP, muesli::finiteStrainMaterial, muesli::finiteStrainMP)
+INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::mooneyMaterial, muesli::mooneyMP, muesli::f_invariants, muesli::fisotropicMP)
+INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::arrudaboyceMaterial, muesli::arrudaboyceMP, muesli::f_invariants, muesli::fisotropicMP)
+INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::yeohMaterial, muesli::yeohMP, muesli::f_invariants, muesli::fisotropicMP)
+

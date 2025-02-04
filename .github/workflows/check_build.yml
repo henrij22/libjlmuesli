@@ -60,3 +60,10 @@ jobs:
           
           # Build the target
           cmake --build . --parallel 2 --target jlmuesli
+
+      - name: Test
+        working-directory: ./repo
+        run: |
+          julia julia/test.jl ${GITHUB_WORKSPACE}/repo/cmake-build-${{ matrix.config.name }}/lib
+
+
