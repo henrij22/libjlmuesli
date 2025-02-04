@@ -18,3 +18,6 @@ function __init__()
 end
 
 end
+
+println("Test WrapModule successfull")
+exit(0)
