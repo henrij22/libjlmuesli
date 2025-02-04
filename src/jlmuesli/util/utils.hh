@@ -8,7 +8,6 @@
 #include <jlcxx/jlcxx.hpp>
 
 // helpers.cpp
-
 struct MultiMapWrapper
 {
   // Insert a (key, value) pair into the multimap

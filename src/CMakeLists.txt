@@ -3,13 +3,6 @@
 
 add_subdirectory(jlmuesli)
 
-
-# file(
-#   GLOB_RECURSE sources
-#   RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-#   CONFIGURE_DEPENDS *.cpp
-# )
-
 set(JLMUESLI_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/jlmuesli)
 set(JLMUESLI_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/jlmuesli)
 
@@ -29,6 +22,5 @@ set(JLMUESLI_SOURCES
 set_target_properties(${JLCXX_TARGET} PROPERTIES
                       PUBLIC_HEADER "${JLMUESLI_HEADERS}"
                       )
-
 
 add_library(jlmuesli SHARED ${JLMUESLI_SOURCES})
