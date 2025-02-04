@@ -17,6 +17,7 @@ set(JLMUESLI_SOURCES
   ${JLMUESLI_SOURCE_DIR}/util/tensors.cpp
   ${JLMUESLI_SOURCE_DIR}/util/propertynames.cpp
   ${JLMUESLI_SOURCE_DIR}/finitestrain/finitestrainbindings.cpp
+  ${JLMUESLI_SOURCE_DIR}/smallstrain/smallstrainbindings.cpp
 )
 
 

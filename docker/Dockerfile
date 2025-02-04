@@ -23,11 +23,12 @@ RUN apt-get update && apt-get install -y \
     nano \
     htop \
     libopenblas-dev \
+    ninja-build \
     # clang-format \
     # cmake-format \
     && rm -rf /var/lib/apt/lists/*
 
-RUN  update-alternatives --install /usr/bin/python python /usr/bin/python3.11 11
+RUN  update-alternatives --install /usr/bin/python python /usr/bin/python3
 
 RUN  python -m pip install --upgrade pip --break-system-packages && \
     python -m pip install --no-cache-dir --break-system-packages \
