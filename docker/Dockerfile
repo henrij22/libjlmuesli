@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     nano \
     htop \
     libopenblas-dev \
+    ninja-build \
     # clang-format \
     # cmake-format \
     && rm -rf /var/lib/apt/lists/*
