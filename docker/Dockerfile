@@ -30,10 +30,9 @@ RUN apt-get update && apt-get install -y \
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
-RUN  python -m pip install --upgrade pip --break-system-packages && \
-    python -m pip install --no-cache-dir --break-system-packages \
+RUN  python -m pip install --no-cache-dir --break-system-packages \
     cmakelang==0.6.13 \
-    clang-format==18.1.8 \
+    clang-format==18.1.8
 
 RUN git clone --depth=1 https://gitlab.com/libeigen/eigen.git && \
     cd eigen && \
