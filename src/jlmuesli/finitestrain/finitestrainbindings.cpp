@@ -129,14 +129,16 @@ jlcxx::TypeWrapper<Material> registerFiniteStrainMaterial(jlcxx::Module& mod, co
 }
 
 // Explicitly instantiate templates
-#define INSTANTIATE_FINITE_STRAIN_MATERIAL(Material, MaterialMP, Invariants, MPType) \
-    template jlcxx::TypeWrapper<Material> registerFiniteStrainMaterial<Material, MaterialMP, Invariants, MPType>( \
-        jlcxx::Module&, const std::string&);
+#define INSTANTIATE_FINITE_STRAIN_MATERIAL(Material, MaterialMP, MaterialBase, MPBase)                            \
+  template jlcxx::TypeWrapper<Material> registerFiniteStrainMaterial<Material, MaterialMP, MaterialBase, MPBase>( \
+      jlcxx::Module&, const std::string&);
 
 // Use the macro for explicit instantiations
-INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::neohookeanMaterial, muesli::neohookeanMP, muesli::f_invariants, muesli::fisotropicMP)
-INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::svkMaterial, muesli::svkMP, muesli::finiteStrainMaterial, muesli::finiteStrainMP)
+INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::neohookeanMaterial, muesli::neohookeanMP, muesli::f_invariants,
+                                   muesli::fisotropicMP)
+INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::svkMaterial, muesli::svkMP, muesli::finiteStrainMaterial,
+                                   muesli::finiteStrainMP)
 INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::mooneyMaterial, muesli::mooneyMP, muesli::f_invariants, muesli::fisotropicMP)
-INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::arrudaboyceMaterial, muesli::arrudaboyceMP, muesli::f_invariants, muesli::fisotropicMP)
+INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::arrudaboyceMaterial, muesli::arrudaboyceMP, muesli::f_invariants,
+                                   muesli::fisotropicMP)
 INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::yeohMaterial, muesli::yeohMP, muesli::f_invariants, muesli::fisotropicMP)
-

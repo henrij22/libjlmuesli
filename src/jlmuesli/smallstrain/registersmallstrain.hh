@@ -3,19 +3,21 @@
 
 #pragma once
 
-#include "smallstrainbindings.hh"
-
-#include <vector>
-
 #include <jlmuesli/util/common.hh>
+#include <jlmuesli/util/utils.hh>
 
 #include <muesli/muesli.h>
 #include <muesli/Smallstrain/sdamage.h>
 
-#include <jlcxx/array.hpp>
 #include <jlcxx/jlcxx.hpp>
 
 #include <julia.h>
+
+// Forward declare
+template <typename Material, typename MaterialPoint, bool registerConvergedState = true,
+          typename MaterialBase = muesli::smallStrainMaterial, typename MaterialPointBase = muesli::smallStrainMP>
+std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> registerSmallStrainMaterial(
+    jlcxx::Module& mod, const std::string& name);
 
 inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
   using jlcxx::arg;

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#pragma once
+#include <jlmuesli/smallstrain/registersmallstrain.hh>
 #include <jlmuesli/util/common.hh>
 #include <jlmuesli/util/utils.hh>
 
@@ -9,9 +9,10 @@
 
 #include <jlcxx/jlcxx.hpp>
 
-template <typename Material, typename MaterialPoint, bool registerConvergedState = true,
-          typename MaterialBase = muesli::smallStrainMaterial, typename MaterialPointBase = muesli::smallStrainMP>
-auto registerSmallStrainMaterial(jlcxx::Module& mod, const std::string& name) {
+template <typename Material, typename MaterialPoint, bool registerConvergedState, typename MaterialBase,
+          typename MaterialPointBase>
+std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> registerSmallStrainMaterial(
+    jlcxx::Module& mod, const std::string& name) {
   using jlcxx::arg;
 
   std::string matName = name + "Material";
@@ -117,5 +118,33 @@ auto registerSmallStrainMaterial(jlcxx::Module& mod, const std::string& name) {
     });
   }
 
-  return std::make_tuple(mat, mp);
+  return std::make_pair(mat, mp);
 }
+
+#define INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE(Material, MaterialMP, MaterialBase, MPBase) \
+  template std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialMP>>         \
+  registerSmallStrainMaterial<Material, MaterialMP, false, MaterialBase, MPBase>(jlcxx::Module&, const std::string&);
+
+#define INSTANTIATE_SMALL_STRAIN_MATERIAL_F(Material, MaterialMP)                  \
+  template std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialMP>> \
+  registerSmallStrainMaterial<Material, MaterialMP, false>(jlcxx::Module&, const std::string&);
+
+#define INSTANTIATE_SMALL_STRAIN_MATERIAL(Material, MaterialMP)                    \
+  template std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialMP>> \
+  registerSmallStrainMaterial<Material, MaterialMP>(jlcxx::Module&, const std::string&);
+
+// Use the macro for explicit instantiations
+INSTANTIATE_SMALL_STRAIN_MATERIAL(muesli::elasticIsotropicMaterial, muesli::elasticIsotropicMP)
+INSTANTIATE_SMALL_STRAIN_MATERIAL(muesli::elasticAnisotropicMaterial, muesli::elasticAnisotropicMP)
+INSTANTIATE_SMALL_STRAIN_MATERIAL(muesli::elasticOrthotropicMaterial, muesli::elasticOrthotropicMP)
+INSTANTIATE_SMALL_STRAIN_MATERIAL(muesli::elasticTransverselyisotropicMaterial, muesli::elasticTransverselyisotropicMP)
+INSTANTIATE_SMALL_STRAIN_MATERIAL_F(muesli::splasticMaterial, muesli::splasticMP)
+INSTANTIATE_SMALL_STRAIN_MATERIAL_F(muesli::viscoelasticMaterial, muesli::viscoelasticMP)
+INSTANTIATE_SMALL_STRAIN_MATERIAL_F(muesli::viscoplasticMaterial, muesli::viscoplasticMP)
+INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE(muesli::GTN_Material, muesli::GTN_MP, muesli::sdamageMaterial, muesli::sdamageMP)
+INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE(muesli::Gurson_Material, muesli::Gurson_MP, muesli::sdamageMaterial,
+                                       muesli::sdamageMP)
+INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE(muesli::Lemaitre_Material, muesli::Lemaitre_MP, muesli::sdamageMaterial,
+                                       muesli::sdamageMP)
+INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE(muesli::LemKin_Material, muesli::LemKin_MP, muesli::sdamageMaterial,
+                                       muesli::sdamageMP)
