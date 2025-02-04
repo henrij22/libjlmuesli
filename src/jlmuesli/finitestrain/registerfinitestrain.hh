@@ -3,13 +3,20 @@
 
 #pragma once
 
-#include "finitestrainbindings.hh"
+// #include "finitestrainbindings.hh"
 
 #include <jlmuesli/util/common.hh>
+#include <jlmuesli/util/utils.hh>
 
 #include <muesli/muesli.h>
 
 #include <jlcxx/jlcxx.hpp>
+
+// Forward declare
+template <typename Material, typename MaterialPoint, typename MaterialBase = muesli::finiteStrainMaterial,
+          typename MaterialPointBase = muesli::finiteStrainMP>
+jlcxx::TypeWrapper<Material> registerFiniteStrainMaterial(
+    jlcxx::Module& mod, const std::string& name);
 
 inline void registerFiniteStrainMaterials(jlcxx::Module& mod) {
   using jlcxx::arg;

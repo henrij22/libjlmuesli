@@ -4,7 +4,7 @@
 #include "common.hh"
 #include "utils.hh"
 
-inline void registerMaterialState(jlcxx::Module& mod) {
+void registerMaterialState(jlcxx::Module& mod) {
   using namespace muesli;
 
   mod.add_type<materialState>("materialState")
