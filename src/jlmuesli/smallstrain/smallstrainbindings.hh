@@ -30,89 +30,137 @@ auto registerSmallStrainMaterial(jlcxx::Module& mod, const std::string& name) {
 
   mat.method("createMaterialPoint", &Material::createMaterialPoint);
 
-  auto mp =
-      mod.add_type<MaterialPoint>(mpName, jlcxx::julia_base_type<MaterialPointBase>())
-          .constructor([](const Material& sm) { return new MaterialPoint(sm); })
-          // ----------------------------------------------------------------------
-          // 3D response
-          // ----------------------------------------------------------------------
-          .method("contractWithDeviatoricTangent!", [](MaterialPoint& mp, const ivector& v1, const ivector& v2,
-                                                       itensor& T) { mp.contractWithDeviatoricTangent(v1, v2, T); })
+  auto mp = mod.add_type<MaterialPoint>(mpName, jlcxx::julia_base_type<MaterialPointBase>())
+                .constructor([](const Material& sm) { return new MaterialPoint(sm); })
+                // ----------------------------------------------------------------------
+                // 3D response
+                // ----------------------------------------------------------------------
+                .method("contractWithDeviatoricTangent!",
+                        [](MaterialPoint& mp, JuliaVector v1, JuliaVector v2, JuliaTensor T) {
+                          itensor result;
+                          mp.contractWithDeviatoricTangent(toIVector(v1), toIVector(v2), result);
+                          itensorToArrayRef(result, T);
+                        })
 
-          .method("contractWithTangent!", [](MaterialPoint& mp, const ivector& v1, const ivector& v2,
-                                             itensor& T) { mp.contractWithTangent(v1, v2, T); })
-          .method("contractWithMixedTangent!", [](MaterialPoint& mp, istensor& CM) { mp.contractWithMixedTangent(CM); })
+                .method("contractWithTangent!",
+                        [](MaterialPoint& mp, JuliaVector v1, JuliaVector v2, JuliaTensor T) {
+                          itensor result;
+                          mp.contractWithTangent(toIVector(v1), toIVector(v2), result);
+                          itensorToArrayRef(result, T);
+                        })
 
-          .method("dissipationTangent!", [](MaterialPoint& mp, itensor4& D) { mp.dissipationTangent(D); })
+                .method("dissipationTangent!",
+                        [](MaterialPoint& mp, JuliaTensor4 T) {
+                          itensor4 D;
+                          mp.dissipationTangent(D);
+                          itensor4ToArrayRef(D, T);
+                        })
 
-          .method("plasticSlip", [](MaterialPoint& mp) { return mp.plasticSlip(); })
+                .method("plasticSlip", [](MaterialPoint& mp) { return mp.plasticSlip(); })
 
-          .method("shearStiffness", [](MaterialPoint& mp) { return mp.shearStiffness(); })
+                .method("shearStiffness", [](MaterialPoint& mp) { return mp.shearStiffness(); })
 
-          .method("tangentTensor!", [](MaterialPoint& mp, itensor4& C) { mp.tangentTensor(C); })
+                .method("tangentTensor!",
+                        [](MaterialPoint& mp, JuliaTensor4 T) {
+                          itensor4 C;
+                          mp.tangentTensor(C);
+                          itensor4ToArrayRef(C, T);
+                        })
 
-          // .method("tangentMatrix",
-          //         [](MaterialPoint& mp) {
-          //           // NOT IMPLEMENTED
-          //         })
+                .method("tangentMatrix",
+                        [](MaterialPoint& mp) {
+                          // tangentMatrix expects a double[6][6] array
+                          double C[6][6];
+                          mp.tangentMatrix(C);
 
-          .method("volumetricStiffness", [](MaterialPoint& mp) { return mp.volumetricStiffness(); })
+                          // Flatten into a 36-element std::vector
+                          std::vector<double> result(36);
+                          for (int i = 0; i < 6; ++i) {
+                            for (int j = 0; j < 6; ++j) {
+                              result[i * 6 + j] = C[i][j];
+                            }
+                          }
+                          return result;
+                        })
 
-          // ----------------------------------------------------------------------
-          // Energy
-          // ----------------------------------------------------------------------
-          .method("deviatoricEnergy", [](MaterialPoint& mp) { return mp.deviatoricEnergy(); })
+                .method("volumetricStiffness", [](MaterialPoint& mp) { return mp.volumetricStiffness(); })
 
-          .method("energyDissipationInStep", [](MaterialPoint& mp) { return mp.energyDissipationInStep(); })
+                // ----------------------------------------------------------------------
+                // Energy
+                // ----------------------------------------------------------------------
+                .method("deviatoricEnergy", [](MaterialPoint& mp) { return mp.deviatoricEnergy(); })
 
-          .method("effectiveStoredEnergy", [](MaterialPoint& mp) { return mp.effectiveStoredEnergy(); })
+                .method("energyDissipationInStep", [](MaterialPoint& mp) { return mp.energyDissipationInStep(); })
 
-          .method("kineticPotential", [](MaterialPoint& mp) { return mp.kineticPotential(); })
+                .method("effectiveStoredEnergy", [](MaterialPoint& mp) { return mp.effectiveStoredEnergy(); })
 
-          .method("storedEnergy", [](MaterialPoint& mp) { return mp.storedEnergy(); })
+                .method("kineticPotential", [](MaterialPoint& mp) { return mp.kineticPotential(); })
 
-          // .method("thermodynamicPotentials",
-          //         [](MaterialPoint& mp) {
-          //           // thPotentials is a custom return type; you need to ensure
-          //           // you have a jlcxx wrapper or to define how it is converted.
-          //           return mp.thermodynamicPotentials();
-          //         })
+                .method("storedEnergy", [](MaterialPoint& mp) { return mp.storedEnergy(); })
 
-          .method("volumetricEnergy", [](MaterialPoint& mp) { return mp.volumetricEnergy(); })
+                // .method("thermodynamicPotentials",
+                //         [](MaterialPoint& mp) {
+                //           // thPotentials is a custom return type; you need to ensure
+                //           // you have a jlcxx wrapper or to define how it is converted.
+                //           return mp.thermodynamicPotentials();
+                //         })
 
-          // ----------------------------------------------------------------------
-          // Stresses
-          // ----------------------------------------------------------------------
-          .method("pressure", [](MaterialPoint& mp) { return mp.pressure(); })
+                .method("volumetricEnergy", [](MaterialPoint& mp) { return mp.volumetricEnergy(); })
 
-          .method("stress!", [](MaterialPoint& mp, istensor& sigma) { mp.stress(sigma); })
+                // ----------------------------------------------------------------------
+                // Stresses
+                // ----------------------------------------------------------------------
+                .method("pressure", [](MaterialPoint& mp) { return mp.pressure(); })
 
-          .method("deviatoricStress!", [](MaterialPoint& mp, istensor& sigma) { mp.deviatoricStress(sigma); })
+                .method("stress!",
+                        [](MaterialPoint& mp, JuliaTensor T) {
+                          istensor sigma;
+                          mp.stress(sigma);
+                          // Convert to array (6 components for a symmetric tensor, etc.)
+                          itensorToArrayRef(sigma, T);
+                        })
 
-          // ----------------------------------------------------------------------
-          // Strains / States
-          // ----------------------------------------------------------------------
-          .method("getConvergedPlasticStrain",
-                  [](MaterialPoint& mp) -> istensor { return mp.getConvergedPlasticStrain(); })
+                .method("deviatoricStress!",
+                        [](MaterialPoint& mp, JuliaTensor T) {
+                          istensor sigma;
+                          mp.deviatoricStress(sigma);
+                          itensorToArrayRef(sigma, T);
+                        })
 
-          .method("getCurrentPlasticStrain", [](MaterialPoint& mp) -> istensor { return mp.getCurrentPlasticStrain(); })
+                // ----------------------------------------------------------------------
+                // Strains / States
+                // ----------------------------------------------------------------------
+                .method("getConvergedPlasticStrain!",
+                        [](MaterialPoint& mp, JuliaTensor T) {
+                          istensor epsp = mp.getConvergedPlasticStrain();
+                          itensorToArrayRef(epsp, T);
+                        })
 
-          .method("getConvergedState", [](MaterialPoint& mp) { return mp.getConvergedState(); })
+                .method("getCurrentPlasticStrain!",
+                        [](MaterialPoint& mp, JuliaTensor T) {
+                          istensor epsp = mp.getCurrentPlasticStrain();
+                          itensorToArrayRef(epsp, T);
+                        })
 
-          .method("getCurrentState", [](MaterialPoint& mp) { return mp.getCurrentState(); })
+                .method("getConvergedState", [](MaterialPoint& mp) { return mp.getConvergedState(); })
 
-          // ----------------------------------------------------------------------
-          // Bookkeeping
-          // ----------------------------------------------------------------------
-          .method("commitCurrentState", [](MaterialPoint& mp) { mp.commitCurrentState(); })
+                .method("getCurrentState", [](MaterialPoint& mp) { return mp.getCurrentState(); })
 
-          .method("resetCurrentState", [](MaterialPoint& mp) { mp.resetCurrentState(); })
+                // ----------------------------------------------------------------------
+                // Bookkeeping
+                // ----------------------------------------------------------------------
+                .method("commitCurrentState", [](MaterialPoint& mp) { mp.commitCurrentState(); })
 
-          .method("updateCurrentState",
-                  [](MaterialPoint& mp, double t, const istensor& strain) { mp.updateCurrentState(t, strain); });
+                .method("resetCurrentState", [](MaterialPoint& mp) { mp.resetCurrentState(); })
+
+                .method("updateCurrentState", [](MaterialPoint& mp, double t, JuliaTensor strain_array) {
+                  istensor strain = toIstensor(strain_array);
+                  mp.updateCurrentState(t, strain);
+                });
 
   if constexpr (registerConvergedState) {
-    mat.method("setConvergedState", [](MaterialPoint& mp, double theTime, const istensor& strain) {
+    mat.method("setConvergedState", [](MaterialPoint& mp, double theTime, jlcxx::ArrayRef<double, 2> strain_array) {
+      istensor strain = toIstensor(strain_array);
       mp.setConvergedState(theTime, strain);
     });
   }

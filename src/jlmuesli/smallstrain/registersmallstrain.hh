@@ -79,9 +79,13 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
       return new Material{"Splastic", E, nu, rho, Hiso, Hkine, yield, xalpha, plasticityType};
     });
 
-    mat.method("setConvergedState",
-               [](MaterialPoint& mp, const double theTime, const istensor& strain, const double dg, const istensor& epn,
-                  const double xin, const istensor& Xin) { mp.setConvergedState(theTime, strain, dg, epn, xin, Xin); });
+    mat.method("setConvergedState", [](MaterialPoint& mp, double theTime, JuliaTensor strain_array, double dg,
+                                       JuliaTensor epn_array, double xin, JuliaTensor Xin_array) {
+      istensor strain = toIstensor(strain_array);
+      istensor epn    = toIstensor(epn_array);
+      istensor Xin    = toIstensor(Xin_array);
+      mp.setConvergedState(theTime, strain, dg, epn, xin, Xin);
+    });
   }
   {
     using Material      = muesli::viscoelasticMaterial;
@@ -92,12 +96,13 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
     mat.constructor([](double E, double nu, double rho, size_t nvisco, JuliaVector eta, JuliaVector tau) {
       return new Material{"Viscoelastic", E, nu, rho, nvisco, eta.data(), tau.data()};
     });
-    mat.method("setConvergedState",
-               [](MaterialPoint& mp, double theTime, const istensor& strain, ArrayOfTensorsT<istensor> epsv_arrays,
-                  const istensor& epsdev, const double& theta) {
-                 std::vector<istensor> epsv = epsv_arrays.tensors();
-                 mp.setConvergedState(theTime, strain, epsv, epsdev, theta);
-               });
+    mat.method("setConvergedState", [](MaterialPoint& mp, double theTime, JuliaTensor strain_array,
+                                       ArrayOfTensorsT<istensor> epsv_arrays, JuliaTensor epsdev_array, double theta) {
+      istensor strain            = toIstensor(strain_array);
+      istensor epsdev            = toIstensor(epsdev_array);
+      std::vector<istensor> epsv = epsv_arrays.tensors();
+      mp.setConvergedState(theTime, strain, epsv, epsdev, theta);
+    });
   }
   {
     using Material      = muesli::viscoplasticMaterial;
@@ -110,9 +115,13 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
       return new Material{"Viscoplastic", E, nu, rho, Hiso, Hkine, yield, plasticityType, eta, alpha};
     });
 
-    mat.method("setConvergedState",
-               [](MaterialPoint& mp, double theTime, double dg, const istensor& epn, double xin, const istensor& Xin,
-                  const istensor& strain) { mp.setConvergedState(theTime, dg, epn, xin, Xin, strain); });
+    mat.method("setConvergedState", [](MaterialPoint& mp, const double theTime, const double dg, JuliaTensor epn_array,
+                                       const double xin, JuliaTensor Xin_array, JuliaTensor strain_array) {
+      istensor strain = toIstensor(strain_array);
+      istensor epn    = toIstensor(epn_array);
+      istensor Xin    = toIstensor(Xin_array);
+      mp.setConvergedState(theTime, dg, epn, xin, Xin, strain);
+    });
   }
   mod.add_type<muesli::sdamageMaterial>("SdamageMaterial", julia_base_type<muesli::smallStrainMaterial>());
   mod.add_type<muesli::sdamageMP>("SdamageMP", julia_base_type<muesli::smallStrainMP>());
