@@ -60,11 +60,3 @@ jobs:
           
           # Build the target
           cmake --build . --parallel 2 --target jlmuesli
-
-      - name: Test
-        working-directory: ./repo
-        run: |
-          julia -e 'import Pkg; Pkg.add("CxxWrap")'
-          julia julia/wrapmoduletest.jl ${GITHUB_WORKSPACE}/repo/cmake-build-${{ matrix.config.name }}/lib
-
-

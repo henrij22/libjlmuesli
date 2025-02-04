@@ -3,7 +3,7 @@
 
 #include "utils.hh"
 
-void registerPropertyName(jlcxx::Module& mod) {
+inline void registerPropertyName(jlcxx::Module& mod) {
   // Shorthand
   using PN = muesli::propertyName;
 
