@@ -1,6 +1,9 @@
 # libjlmuesli
 [![Check build](https://github.com/henrij22/libjlmuesli/actions/workflows/check_build.yml/badge.svg)](https://github.com/henrij22/libjlmuesli/actions/workflows/check_build.yml)
 
+This is the C++ part of [MuesliMaterials.jl](https://github.com/henrij22/MuesliMaterials.jl).
+Cross-compiled binaries are released at [MuesliMaterialsWrapper_jll.jl](https://github.com/henrij22/MuesliMaterialsWrapper_jll.jl).
+
 Set your `CMAKE_PREFIX_PATH` to something like 
 
 ```
@@ -16,4 +19,5 @@ julia> CxxWrap.prefix_path()
 
 ## Requisits
 
-- muesli library from https://bitbucket.org/ignromero/muesli/src/master/
+- [libjlmuesli](https://github.com/JuliaInterop/libcxxwrap-julia)
+- [muesli](https://bitbucket.org/ignromero/muesli/src/master/)

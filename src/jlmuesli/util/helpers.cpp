@@ -3,6 +3,7 @@
 
 #include "utils.hh"
 #include "common.hh"
+#include <muesli/Math/mtensor.h>
 
 void MultiMapWrapper::set(const std::string& key, double value) {
   m_map.insert({key, value});
@@ -58,6 +59,9 @@ template <typename TensorType>
 const std::vector<TensorType>& ArrayOfTensorsT<TensorType>::tensors() const {
   return tensors_;
 }
+
+template class ArrayOfTensorsT<itensor>;
+template class ArrayOfTensorsT<istensor>;
 
 template <typename TensorType>
 void registerArrayOfTensorsT(jlcxx::Module& mod, const std::string& name) {
