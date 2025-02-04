@@ -61,7 +61,5 @@ void registerMaterialState(jlcxx::Module& mod);
 // propertynames.cpp
 void registerPropertyName(jlcxx::Module& mod);
 
-// // tensors.cpp
-// void registerIVector(jlcxx::Module& mod);
-// void registerITensor(jlcxx::Module& mod);
-// void registerTensors(jlcxx::Module& mod);
+// tensors.cpp
+void registerTensors(jlcxx::Module& mod);

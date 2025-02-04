@@ -5,7 +5,7 @@ using LinearAlgebra
 
 module MuesliTest
 using CxxWrap
-@wrapmodule(()->joinpath("/home/henri/dev/libjlmuesli/build/lib/", "libjlmuesli"))
+@wrapmodule(()->joinpath("/workspaces/libjlmuesli/build/lib/", "libjlmuesli"))
 
 function __init__()
     @initcxx
