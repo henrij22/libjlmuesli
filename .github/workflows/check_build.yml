@@ -64,7 +64,7 @@ jobs:
       - name: Test
         working-directory: ./repo
         run: |
-          julia -e `import Pkg; Pkg.add("CxxWrap")
+          julia -e `import Pkg; Pkg.add("CxxWrap")`
           julia julia/test.jl ${GITHUB_WORKSPACE}/repo/cmake-build-${{ matrix.config.name }}/lib
 
 
