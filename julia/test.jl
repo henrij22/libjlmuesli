@@ -39,7 +39,6 @@ MuesliTest.setProperty!(properties, "young", Emod)
 MuesliTest.setProperty!(properties, "poisson", ν)
 MuesliTest.getProperty(properties, "young")
 
-using BenchmarkTools
 
 vec = MuesliTest.Ivector(1.0, 2.0, 3.0)
 vec = [1.0, 2.0, 3.0]
