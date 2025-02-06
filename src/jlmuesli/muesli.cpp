@@ -16,10 +16,10 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
   using jlcxx::julia_base_type;
 
   // Register utils
+  registerTensors(mod);
   registerHelpers(mod);
   registerMaterialState(mod);
   registerPropertyName(mod);
-  registerTensors(mod);
 
   // Register base classes (important?)
   mod.add_type<muesli::material>("Material");

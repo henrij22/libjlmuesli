@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "common.hh"
 #include "utils.hh"
+
+#include <muesli/Math/mtensor.h>
 
 void registerMaterialState(jlcxx::Module& mod) {
   using namespace muesli;
@@ -23,7 +24,7 @@ void registerMaterialState(jlcxx::Module& mod) {
       // --------------------------------------------------------------------
       .method("getVectorSize", [](const materialState& ms) { return ms.theVector.size(); })
       .method("getVector",
-              [](const materialState& ms, std::size_t i) {
+              [](const materialState& ms, std::size_t i) -> ivector {
                 if (i >= ms.theVector.size()) {
                   throw std::out_of_range("Index out of range in getVector.");
                 }

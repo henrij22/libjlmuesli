@@ -21,7 +21,7 @@ void registerIVector(jlcxx::Module& mod) {
       // Constructors
       .constructor([](const double* data) { return new ivector(data); })
       .constructor([](double a, double b, double c) { return new ivector(a, b, c); })
-      .constructor([](JuliaVector vector) { return new ivector(vector.data()); })
+      .constructor([](JuliaVector vector) { return new ivector(toIVector(vector)); })
       // getter and setter (account for 0 based indexing in c++)
       .method("cxxgetindex", [](const ivector& v, cxxint_t i) -> const double& { return v(i - 1); })
       .method("cxxgetindex", [](ivector& v, cxxint_t i) -> double& { return v(i - 1); })
