@@ -1,13 +1,12 @@
 // SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "utils.hh"
 #include "common.hh"
+#include "utils.hh"
+
 #include <muesli/Math/mtensor.h>
 
-void MultiMapWrapper::set(const std::string& key, double value) {
-  m_map.insert({key, value});
-}
+void MultiMapWrapper::set(const std::string& key, double value) { m_map.insert({key, value}); }
 
 std::vector<double> MultiMapWrapper::get(const std::string& key) const {
   std::vector<double> values;
@@ -18,9 +17,7 @@ std::vector<double> MultiMapWrapper::get(const std::string& key) const {
   return values;
 }
 
-const std::multimap<std::string, double>& MultiMapWrapper::multiMap() const {
-  return m_map;
-}
+const std::multimap<std::string, double>& MultiMapWrapper::multiMap() const { return m_map; }
 
 void MultiMapWrapper::setString(const std::string& key, const std::string& string) {
   auto option = key + " " + string;
@@ -33,9 +30,7 @@ std::string MultiMapWrapper::getString(const std::string& key) const {
   return value;
 }
 
-bool MultiMapWrapper::hasKeyword(const std::string& key) const {
-  return muesli::hasKeyword(m_map, key);
-}
+bool MultiMapWrapper::hasKeyword(const std::string& key) const { return muesli::hasKeyword(m_map, key); }
 
 template <typename TensorType>
 void ArrayOfTensorsT<TensorType>::pushTensor(JuliaTensor tensor) {

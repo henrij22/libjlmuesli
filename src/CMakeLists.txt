@@ -8,21 +8,17 @@ set(JLMUESLI_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/jlmuesli)
 
 file(GLOB_RECURSE JLMUESLI_HEADERS ${JLMUESLI_INCLUDE_DIR}/*.hh)
 
-
 # Explicitly list the source files
 set(JLMUESLI_SOURCES
-  ${JLMUESLI_SOURCE_DIR}/muesli.cpp
-  ${JLMUESLI_SOURCE_DIR}/util/helpers.cpp
-  ${JLMUESLI_SOURCE_DIR}/util/materialstate.cpp
-  ${JLMUESLI_SOURCE_DIR}/util/tensors.cpp
-  ${JLMUESLI_SOURCE_DIR}/util/propertynames.cpp
-  ${JLMUESLI_SOURCE_DIR}/finitestrain/finitestrainbindings.cpp
-  ${JLMUESLI_SOURCE_DIR}/smallstrain/smallstrainbindings.cpp
+    ${JLMUESLI_SOURCE_DIR}/muesli.cpp
+    ${JLMUESLI_SOURCE_DIR}/util/helpers.cpp
+    ${JLMUESLI_SOURCE_DIR}/util/materialstate.cpp
+    ${JLMUESLI_SOURCE_DIR}/util/tensors.cpp
+    ${JLMUESLI_SOURCE_DIR}/util/propertynames.cpp
+    ${JLMUESLI_SOURCE_DIR}/finitestrain/finitestrainbindings.cpp
+    ${JLMUESLI_SOURCE_DIR}/smallstrain/smallstrainbindings.cpp
 )
 
-
-set_target_properties(${JLCXX_TARGET} PROPERTIES
-                      PUBLIC_HEADER "${JLMUESLI_HEADERS}"
-                      )
+set_target_properties(${JLCXX_TARGET} PROPERTIES PUBLIC_HEADER "${JLMUESLI_HEADERS}")
 
 add_library(jlmuesli SHARED ${JLMUESLI_SOURCES})

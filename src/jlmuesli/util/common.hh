@@ -44,21 +44,18 @@ inline auto toIVector(JuliaVector vec) {
   return ivector{vec.data()};
 }
 
-inline auto iVectorToArrayRef(ivector ivec) { return JuliaVector{ivec.components()}; }
-
 inline auto toITensor(JuliaTensor array) {
   // Validate that the input is 3x3
   const double* data = assertSizeAndExtractData(array, {3, 3});
 
-  // Construct the itensor using the 3x3 double array constructor
-  return itensor(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8]);
-}
-
-inline void itensorToArrayRef(const auto& tensor, JuliaTensor array) {
-  double* data = array.data();
-  for (size_t i = 0; i < 3; ++i)
-    for (size_t j = 0; j < 3; ++j)
-      data[i * 3 + j] = tensor(i, j); // Row-major order
+  // Construct the itensor in row-major order:
+  // Row 1: A[1,1], A[1,2], A[1,3]
+  // Row 2: A[2,1], A[2,2], A[2,3]
+  // Row 3: A[3,1], A[3,2], A[3,3]
+  return itensor(data[0], data[3], data[6], // Row 1
+                 data[1], data[4], data[7], // Row 2
+                 data[2], data[5], data[8]  // Row 3
+  );
 }
 
 inline istensor toIstensor(const JuliaTensor& array) {
@@ -90,31 +87,23 @@ inline istensor toIstensor(const JuliaTensor& array) {
   // 4) Construct and return the istensor.
   return istensor(t00, t11, t22, t12, t20, t01);
 }
-
-inline itensor4 arrayRefToItensor4(const jlcxx::ArrayRef<double, 4>& array) {
-  // Validate that the input array is 3x3x3x3
+inline itensor4 toItensor4(const jlcxx::ArrayRef<double, 4>& array) {
+  // Validate that the input array is 3x3x3x3 (3^4 = 81 elements)
   if (array.size() != 81)
-    throw std::invalid_argument("Input ArrayRef must be a 3x3x3x3 array.");
+    throw std::invalid_argument("Input has to be a 3x3x3x3 array.");
 
   // Create an empty itensor4
   itensor4 T;
-
-  // Populate the itensor4 from the ArrayRef
   const double* data = array.data();
+
+  // Populate the itensor4, using column-major indexing.
+  // For a Julia array, the linear index is: i + 3*j + 9*k + 27*l
   for (size_t i = 0; i < 3; ++i)
     for (size_t j = 0; j < 3; ++j)
       for (size_t k = 0; k < 3; ++k)
         for (size_t l = 0; l < 3; ++l)
-          T(i, j, k, l) = data[i * 27 + j * 9 + k * 3 + l];
+          T(i, j, k, l) = data[i + 3 * j + 9 * k + 27 * l];
+  // T(i, j, k, l) = data[i * 27 + j * 9 + k * 3 + l];
 
   return T;
-}
-
-inline void itensor4ToArrayRef(const itensor4& T, JuliaTensor4 array) {
-  double* data = array.data();
-  for (size_t i = 0; i < 3; ++i)
-    for (size_t j = 0; j < 3; ++j)
-      for (size_t k = 0; k < 3; ++k)
-        for (size_t l = 0; l < 3; ++l)
-          data[i * 27 + j * 9 + k * 3 + l] = T(i, j, k, l);
 }

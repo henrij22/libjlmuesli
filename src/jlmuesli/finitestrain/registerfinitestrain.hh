@@ -15,8 +15,7 @@
 // Forward declare
 template <typename Material, typename MaterialPoint, typename MaterialBase = muesli::finiteStrainMaterial,
           typename MaterialPointBase = muesli::finiteStrainMP>
-jlcxx::TypeWrapper<Material> registerFiniteStrainMaterial(
-    jlcxx::Module& mod, const std::string& name);
+jlcxx::TypeWrapper<Material> registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name);
 
 inline void registerFiniteStrainMaterials(jlcxx::Module& mod) {
   using jlcxx::arg;

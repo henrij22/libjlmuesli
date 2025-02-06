@@ -46,11 +46,7 @@ jlcxx::TypeWrapper<Material> registerFiniteStrainMaterial(jlcxx::Module& mod, co
 
       // --- Energies ---
       .method("energyDissipationInStep", [](MaterialPoint& mp) { return mp.energyDissipationInStep(); })
-      .method("dissipatedEnergyDF!",
-              [](MaterialPoint& mp, JuliaTensor T) {
-                itensor e = mp.dissipatedEnergyDF();
-                itensorToArrayRef(e, T);
-              })
+      .method("dissipatedEnergyDF", [](MaterialPoint& mp) { return mp.dissipatedEnergyDF(); })
       .method("dissipatedEnergyDTheta", [](MaterialPoint& mp) { return mp.dissipatedEnergyDTheta(); })
       .method("kineticPotential", [](MaterialPoint& mp) { return mp.kineticPotential(); })
       .method("effectiveStoredEnergy", [](MaterialPoint& mp) { return mp.effectiveStoredEnergy(); })

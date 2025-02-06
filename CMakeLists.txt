@@ -24,7 +24,6 @@ message(STATUS "Found JlCxx at ${JlCxx_location}")
 add_subdirectory(src)
 add_subdirectory(cmake)
 
-
 target_include_directories(jlmuesli PUBLIC "${CMAKE_SOURCE_DIR}/src")
 
 target_link_libraries(jlmuesli muesli JlCxx::cxxwrap_julia)

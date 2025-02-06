@@ -61,7 +61,7 @@ void registerITensor4(jlcxx::Module& mod) {
   mod.add_type<itensor4>("Itensor4")
       // Constructors
       // .constructor([](JuliaTensor4 array) { return new arrayRefToItensor4(array); })
-      .constructor([](JuliaTensor4 array) { return new itensor4(arrayRefToItensor4(array)); })
+      .constructor([](JuliaTensor4 array) { return new itensor4(toItensor4(array)); })
       // getter and setter (account for 0 based indexing in c++)
       .method("cxxgetindex",
               [](const itensor4& v, cxxint_t i, cxxint_t j, cxxint_t k, cxxint_t l) -> const double& {

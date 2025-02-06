@@ -27,29 +27,29 @@ void registerMaterialState(jlcxx::Module& mod) {
                 if (i >= ms.theVector.size()) {
                   throw std::out_of_range("Index out of range in getVector.");
                 }
-                return iVectorToArrayRef(ms.theVector[i]);
+                return ms.theVector[i];
               })
 
       // --------------------------------------------------------------------
       // getStensor - size & single element
       // --------------------------------------------------------------------
       .method("getStensorSize", [](const materialState& ms) { return ms.theStensor.size(); })
-      .method("getStensor!",
-              [](const materialState& ms, std::size_t i, JuliaTensor T) {
+      .method("getStensor",
+              [](const materialState& ms, std::size_t i) {
                 if (i >= ms.theStensor.size()) {
                   throw std::out_of_range("Index out of range in getStensor.");
                 }
-                return itensorToArrayRef(ms.theStensor[i], T);
+                return ms.theStensor[i];
               })
 
       // --------------------------------------------------------------------
       // getTensor - size & single element
       // --------------------------------------------------------------------
       .method("getTensorSize", [](const materialState& ms) { return ms.theTensor.size(); })
-      .method("getTensor!", [](const materialState& ms, std::size_t i, JuliaTensor T) {
+      .method("getTensor", [](const materialState& ms, std::size_t i) {
         if (i >= ms.theTensor.size()) {
           throw std::out_of_range("Index out of range in getTensor.");
         }
-        return itensorToArrayRef(ms.theTensor[i], T);
+        return ms.theTensor[i];
       });
 }
