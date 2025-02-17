@@ -8,14 +8,18 @@
 #include <jlmuesli/util/common.hh>
 #include <jlmuesli/util/utils.hh>
 
+#include <muesli/Finitestrain/fplastic.h>
+#include <muesli/Finitestrain/reducedfinitestrain.h>
+#include <muesli/Math/mtensor.h>
 #include <muesli/muesli.h>
 
 #include <jlcxx/jlcxx.hpp>
 
 // Forward declare
 template <typename Material, typename MaterialPoint, typename MaterialBase = muesli::finiteStrainMaterial,
-          typename MaterialPointBase = muesli::finiteStrainMP>
-jlcxx::TypeWrapper<Material> registerFiniteStrainMaterial(jlcxx::Module& mod, const std::string& name);
+          typename MaterialPointBase = muesli::finiteStrainMP, bool registerConvergedState = true>
+std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> registerFiniteStrainMaterial(
+    jlcxx::Module& mod, const std::string& name);
 
 inline void registerFiniteStrainMaterials(jlcxx::Module& mod) {
   using jlcxx::arg;
@@ -30,7 +34,7 @@ inline void registerFiniteStrainMaterials(jlcxx::Module& mod) {
   {
     using Material      = muesli::neohookeanMaterial;
     using MaterialPoint = muesli::neohookeanMP;
-    auto mat = registerFiniteStrainMaterial<Material, MaterialPoint, muesli::f_invariants, muesli::fisotropicMP>(
+    auto [mat, mp] = registerFiniteStrainMaterial<Material, MaterialPoint, muesli::f_invariants, muesli::fisotropicMP>(
         mod, "NeoHooke");
     mat.constructor([](double Emod, double nu, double rho = 1.0) { return new Material{"NeoHooke", Emod, nu, rho}; },
                     arg("Emod"), arg("nu"), arg("rho") = 1.0);
@@ -39,7 +43,7 @@ inline void registerFiniteStrainMaterials(jlcxx::Module& mod) {
   {
     using Material      = muesli::svkMaterial;
     using MaterialPoint = muesli::svkMP;
-    auto mat            = registerFiniteStrainMaterial<Material, MaterialPoint>(mod, "SVK");
+    auto [mat, mp]      = registerFiniteStrainMaterial<Material, MaterialPoint>(mod, "SVK");
     mat.constructor([](double Emod, double nu) { return new Material{"SVK", toMPM_Enu(Emod, nu)}; }, arg("Emod"),
                     arg("nu"));
   }
@@ -47,7 +51,7 @@ inline void registerFiniteStrainMaterials(jlcxx::Module& mod) {
   {
     using Material      = muesli::mooneyMaterial;
     using MaterialPoint = muesli::mooneyMP;
-    auto mat = registerFiniteStrainMaterial<Material, MaterialPoint, muesli::f_invariants, muesli::fisotropicMP>(
+    auto [mat, mp] = registerFiniteStrainMaterial<Material, MaterialPoint, muesli::f_invariants, muesli::fisotropicMP>(
         mod, "Mooney");
     mat.constructor(
         [](double alpha0, double alpha1, double alpha2, bool incompressible = true) {
@@ -62,7 +66,7 @@ inline void registerFiniteStrainMaterials(jlcxx::Module& mod) {
   {
     using Material      = muesli::arrudaboyceMaterial;
     using MaterialPoint = muesli::arrudaboyceMP;
-    auto mat = registerFiniteStrainMaterial<Material, MaterialPoint, muesli::f_invariants, muesli::fisotropicMP>(
+    auto [mat, mp] = registerFiniteStrainMaterial<Material, MaterialPoint, muesli::f_invariants, muesli::fisotropicMP>(
         mod, "ArrudaBoyce");
     mat.constructor([](double C1, double lambdam, double bulk,
                        bool compressible) { return new Material{"ArrudaBoyce", C1, lambdam, bulk, compressible}; },
@@ -71,10 +75,34 @@ inline void registerFiniteStrainMaterials(jlcxx::Module& mod) {
   {
     using Material      = muesli::yeohMaterial;
     using MaterialPoint = muesli::yeohMP;
-    auto mat =
+    auto [mat, mp] =
         registerFiniteStrainMaterial<Material, MaterialPoint, muesli::f_invariants, muesli::fisotropicMP>(mod, "Yeoh");
     mat.constructor([](double C1, double C2, double C3, double bulk,
                        bool compressible) { return new Material{"Yeoh", C1, C2, C3, bulk, compressible}; },
                     arg("C1"), arg("C2"), arg("C3"), arg("bulk"), arg("compressible"));
+  }
+  {
+    using Material      = muesli::fplasticMaterial;
+    using MaterialPoint = muesli::fplasticMP;
+    auto [mat, mp]      = registerFiniteStrainMaterial<Material, MaterialPoint, muesli::finiteStrainMaterial,
+                                                       muesli::finiteStrainMP, false>(mod, "Fplastic");
+    mat.constructor(
+        [](double E, double nu, double Hiso, double Hkine, double Y0, double Yinf, double Yexp, double soft) {
+          MaterialProperties properties;
+          properties.set("young", E);
+          properties.set("poisson", nu);
+          properties.set("isotropich", Hiso);
+          properties.set("kinematich", Hkine);
+          properties.set("yieldstress", Y0);
+          properties.set("yieldinf", Yinf);
+          properties.set("hardexp", Yexp);
+          properties.set("softening", soft);
+
+          return new Material{"Fplastic", properties.multiMap()};
+        },
+        arg("E"), arg("nu"), arg("Hiso"), arg("Hkine"), arg("Y0"), arg("Yinf"), arg("Yexp"), arg("soft"));
+    mp.method("setConvergedState",
+              [](MaterialPoint& mp, double theTime, const itensor& F, double iso, const ivector& kine,
+                 const istensor& be) { mp.setConvergedState(theTime, F, iso, kine, be); });
   }
 }
