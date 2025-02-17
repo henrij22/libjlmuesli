@@ -4,7 +4,8 @@
 using LinearAlgebra
 
 module MuesliTest
-path_to_lib = "/workspaces/libjlmuesli/build/lib/"
+# path_to_lib = "/workspaces/libjlmuesli/build/lib/"
+path_to_lib = "/home/henri/dev/libjlmuesli/build/lib/"
 
 if (!isempty(ARGS))
     path_to_lib = ARGS[1]
