@@ -127,9 +127,8 @@ std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> regis
           .method("isFullyDamaged", [](MaterialPoint& mp) { return mp.isFullyDamaged(); });
 
   if constexpr (registerConvergedState) {
-    mp.method("setConvergedState", [](MaterialPoint& mp, double theTime, const itensor& strain) {
-      mp.setConvergedState(theTime, strain);
-    });
+    mp.method("setConvergedState",
+              [](MaterialPoint& mp, double theTime, const itensor& strain) { mp.setConvergedState(theTime, strain); });
   }
 
   return std::make_pair(mat, mp);
