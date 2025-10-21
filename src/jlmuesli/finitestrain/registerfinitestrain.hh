@@ -59,6 +59,8 @@ inline void registerFiniteStrainMaterials(jlcxx::Module& mod) {
           properties.set("alpha0", alpha0);
           properties.set("alpha1", alpha1);
           properties.set("alpha2", alpha2);
+          if (incompressible)
+            properties.set("incompressible", 0);
           return new Material{"Mooney", properties.multiMap()};
         },
         arg("alpha0"), arg("alpha1"), arg("alpha2"), arg("incompressible") = true);
