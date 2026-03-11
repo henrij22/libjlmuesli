@@ -26,3 +26,4 @@ jobs:
           push: true
           tags: henrij22/ubuntu-julia-muesli:latest
           context: "{{defaultContext}}:docker"
+ 

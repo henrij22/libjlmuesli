@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 Henrik Jakob jakob@ibb.uni-stuttgart.de
+# SPDX-License-Identifier: MIT
+
+name: Build MuesliMaterialsWrapper JLL
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BINARYBUILDER_AUTOMATIC_APPLE: "true"
+
+    steps:
+      - name: Check out Yggdrasil (mueslimaterials branch)
+        uses: actions/checkout@v6
+        with:
+          repository: henrij22/Yggdrasil
+          ref: mueslimaterials
+          path: Yggdrasil
+          fetch-depth: 1
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+
+      - name: Verify required secret is set
+        shell: bash
+        run: |
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "Missing secret: GITHUB_TOKEN"
+            exit 1
+          fi
+
+      - name: Install BinaryBuilder master and BinaryBuilderBase
+        working-directory: Yggdrasil
+        shell: bash
+        run: |
+          julia --color=yes --project=. -e 'using Pkg; Pkg.activate("."); Pkg.add(PackageSpec(name="BinaryBuilder", rev="master")); Pkg.add("BinaryBuilderBase"); Pkg.instantiate()'
+
+      - name: Run build_tarballs.jl and deploy
+        working-directory: Yggdrasil
+        shell: bash
+        run: |
+          julia --color=yes --project=. M/MuesliMaterialsWrapper/build_tarballs.jl --debug --verbose --deploy="henrij22/MuesliMaterialsWrapper_jll.jl"
