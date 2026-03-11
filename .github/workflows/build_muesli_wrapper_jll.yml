@@ -38,6 +38,12 @@ jobs:
             exit 1
           fi
 
+      - name: Configure Git identity for deploy
+        shell: bash
+        run: |
+          git config --global user.name "Henrik Jakob"
+          git config --global user.email "jakob@ibb.uni-stuttgart.de"
+
       - name: Install BinaryBuilder master and BinaryBuilderBase
         working-directory: Yggdrasil
         shell: bash
