@@ -46,6 +46,7 @@ the Julia side feel native:
 | `src/jlmuesli/smallstrain/` | small-strain materials: elastic, plastic, viscous, damage |
 | `src/jlmuesli/finitestrain/` | finite-strain materials: hyperelastic and finite plasticity |
 | `test/` | C++ unit tests (doctest + CTest) |
+| `patches/` | `cmakesupport.patch`, which adds a CMake project to MUESLI |
 | `julia/` | Julia integration suite run against the freshly built library |
 
 ## Building
@@ -53,8 +54,9 @@ the Julia side feel native:
 ### Prerequisites
 
 - A C++17 compiler and CMake ≥ 3.18
-- **Eigen** (header-only), which MUESLI's tensor headers include
-- **BLAS and LAPACK**, which MUESLI links against
+- **Eigen** (header-only), which MUESLI's tensor headers include — `libeigen3-dev` on Debian
+  and Ubuntu
+- **BLAS and LAPACK**, which MUESLI links against — `libopenblas-dev liblapack-dev`
 - **MUESLI**, built and installed — see below
 - **libcxxwrap-julia**, which ships with the `CxxWrap.jl` package. Ask Julia for its path from
   an environment that has CxxWrap installed — `julia/` in this repository is one:
@@ -66,45 +68,64 @@ the Julia side feel native:
 
 ### Building MUESLI
 
-MUESLI ships no CMake build of its own, so this repository carries one in `docker/patches/`.
-The released binaries pin commit `27e8204971602cb042d633b8b5f87761272b10df`; matching that
-locally avoids surprises.
+MUESLI ships no build system of its own, so `patches/cmakesupport.patch` adds a CMake project
+to it. That patch is the same one
+[Yggdrasil](https://github.com/henrij22/Yggdrasil/blob/master/M/MuesliMaterials/build_tarballs.jl)
+applies when building `MuesliMaterials_jll`.
+
+**Yggdrasil is the source of truth for the pinned commit.** It currently builds
+`be3500e9958ef79974fb1f588a8f885c442448ce`; match it locally, or you will be developing
+against a different MUESLI than the released binaries. The same commit is pinned in
+`.github/workflows/check_build.yml` as `MUESLI_COMMIT`, and the three should be kept in step.
 
 ```bash
 PREFIX=$HOME/dev/install
 
-# Eigen headers
+git clone https://bitbucket.org/ignromero/muesli.git
+cd muesli
+git checkout be3500e9958ef79974fb1f588a8f885c442448ce
+git apply /path/to/libjlmuesli/patches/cmakesupport.patch
+
+cmake -B builddir \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=$PREFIX \
+  -DCMAKE_CXX_FLAGS="-I/usr/include/eigen3"
+cmake --build builddir --parallel
+cmake --install builddir
+```
+
+If Eigen is not installed system-wide, fetch the headers and point at those instead:
+
+```bash
 git clone --depth 1 https://gitlab.com/libeigen/eigen.git
 cmake -S eigen -B eigen/build -DCMAKE_INSTALL_PREFIX=$PREFIX
 cmake --build eigen/build --target install
-
-# MUESLI itself, with the CMake project from docker/patches
-git clone https://bitbucket.org/ignromero/muesli.git
-cd muesli && git checkout 27e8204971602cb042d633b8b5f87761272b10df
-cp /path/to/libjlmuesli/docker/patches/CMakeLists.txt .
-cp /path/to/libjlmuesli/docker/patches/MuesliConfig.cmake.in .
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX \
-  -DCMAKE_CXX_FLAGS="-I$PREFIX/include/eigen3"
-cmake --build build --target install --parallel
+# ... then -DCMAKE_CXX_FLAGS="-I$PREFIX/include/eigen3"
 ```
-
-`docker/Dockerfile` does the same thing in a container if you would rather not install
-anything locally.
 
 ### Configure and build
 
 ```bash
 PREFIX=$HOME/dev/install
-CXXWRAP_PREFIX=$(julia --project=julia -e 'using CxxWrap; println(CxxWrap.prefix_path())')
+CXXWRAP_PREFIX=$(julia --project=julia -e 'using CxxWrap; print(CxxWrap.prefix_path())')
+JULIA_LIB=$(julia --startup-file=no -e 'using Libdl; print(abspath(Libdl.dlpath("libjulia")))')
 
 cmake -S . -B build \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH="$PREFIX;$CXXWRAP_PREFIX" \
-  -DCMAKE_CXX_FLAGS="-I$PREFIX/include/eigen3"
+  -DJulia_LIBRARY="$JULIA_LIB" \
+  -DCMAKE_CXX_FLAGS="-I/usr/include/eigen3"
 cmake --build build --parallel
 ```
 
 The result is `build/lib/libjlmuesli.so` (`.dylib` on macOS, `.dll` on Windows).
+
+`-DJulia_LIBRARY` is only needed for the **test executable**. The shared library links fine
+without it, because a shared library may leave symbols undefined; an executable may not, and
+`jlmuesli_tests` reaches `libjulia` transitively through `libcxxwrap_julia`. `JlCxxConfig` runs
+`find_package(Julia)` without `REQUIRED`, so when the `julia` executable is not on CMake's
+`PATH` the library path silently goes missing and only the tests fail to link. Passing it
+explicitly sidesteps that; omit it and the tests are skipped with a warning.
 
 ### Options
 
@@ -134,12 +155,14 @@ as MuesliMaterials.jl does:
 
 ```bash
 julia --project=julia -e 'using Pkg; Pkg.instantiate()'
-LD_PRELOAD=$HOME/dev/install/lib/libmuesli.so \
+LD_LIBRARY_PATH=$HOME/dev/install/lib \
   julia --project=julia julia/runtests.jl build/lib
 ```
 
 The path argument is the directory holding the shared library; alternatively set
-`JLMUESLI_LIB`. See the next section for why `LD_PRELOAD` is there.
+`JLMUESLI_LIB`. `LD_LIBRARY_PATH` is only needed if MUESLI is installed somewhere the loader
+does not search (`DYLD_LIBRARY_PATH` on macOS). This suite loads `libjlmuesli` directly, so
+nothing else is competing to provide `libmuesli` — unlike the MuesliMaterials.jl case below.
 
 Rather than assert against recorded numbers, the suite checks properties that must hold
 whatever the implementation does: linear isotropic elasticity against the closed-form
