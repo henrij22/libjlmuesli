@@ -55,15 +55,28 @@ jobs:
             exit 1
           fi
           
+          # The C++ tests link libjulia transitively through libcxxwrap_julia, and an
+          # executable must resolve those symbols at link time. Ask Julia for the library
+          # rather than relying on CMake finding the executable on PATH.
+          JULIA_LIB=$(julia --startup-file=no -e 'using Libdl; print(abspath(Libdl.dlpath("libjulia")))')
+          echo "Julia library: $JULIA_LIB"
+
           # Run CMake with the specified prefix path
-          cmake -DCMAKE_PREFIX_PATH="$PREFIX_PATH" ../
+          cmake -DCMAKE_PREFIX_PATH="$PREFIX_PATH" -DJulia_LIBRARY="$JULIA_LIB" ../
           
           # Build everything, including the C++ unit tests
           cmake --build . --parallel 2
 
       - name: C++ unit tests
         working-directory: ./repo/cmake-build-${{ matrix.config.name }}
-        run: ctest --output-on-failure
+        run: |
+          # `ctest` on an empty test set would pass silently, and the tests are skipped when
+          # Julia is not found -- make that a failure rather than a green tick.
+          if [ "$(ctest --show-only=json-v1 | grep -c '"name"')" -eq 0 ]; then
+            echo "::error::No C++ tests were registered -- did CMake skip them?"
+            exit 1
+          fi
+          ctest --output-on-failure
 
       - name: Julia integration tests
         working-directory: ./repo
