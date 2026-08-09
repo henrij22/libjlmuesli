@@ -70,7 +70,7 @@ the Julia side feel native:
 
 MUESLI ships no build system of its own, so `patches/cmakesupport.patch` adds a CMake project
 to it. That patch is the same one
-[Yggdrasil](https://github.com/henrij22/Yggdrasil/blob/master/M/MuesliMaterials/build_tarballs.jl)
+[Yggdrasil](https://github.com/JuliaPackaging/Yggdrasil/blob/master/M/MuesliMaterials/build_tarballs.jl)
 applies when building `MuesliMaterials_jll`.
 
 **Yggdrasil is the source of truth for the pinned commit.** It currently builds

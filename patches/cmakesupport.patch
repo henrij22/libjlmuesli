@@ -63,7 +63,10 @@ index 0000000..50ac395
 +install(TARGETS muesli EXPORT muesli-targets
 +  LIBRARY DESTINATION lib
 +  ARCHIVE DESTINATION lib
++  RUNTIME DESTINATION bin
 +)
++
++install(DIRECTORY muesli
 +
 +install(DIRECTORY muesli
 +  DESTINATION include/
