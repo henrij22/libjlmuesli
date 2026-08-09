@@ -20,9 +20,10 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 # Keep in sync with the commit MuesliMaterials pins in Yggdrasil:
-# https://github.com/henrij22/Yggdrasil/blob/master/M/MuesliMaterials/build_tarballs.jl
+# https://github.com/JuliaPackaging/Yggdrasil/blob/master/M/MuesliMaterials/build_tarballs.jl
+# Also update in Readme
 env:
-  MUESLI_COMMIT: be3500e9958ef79974fb1f588a8f885c442448ce
+  MUESLI_COMMIT: d03610adcf0294693ad033bf6f475718fb4a8ca0
 
 jobs:
   build-muesli:

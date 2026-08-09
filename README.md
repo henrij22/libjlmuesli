@@ -74,7 +74,7 @@ to it. That patch is the same one
 applies when building `MuesliMaterials_jll`.
 
 **Yggdrasil is the source of truth for the pinned commit.** It currently builds
-`be3500e9958ef79974fb1f588a8f885c442448ce`; match it locally, or you will be developing
+`d03610adcf0294693ad033bf6f475718fb4a8ca0`; match it locally, or you will be developing
 against a different MUESLI than the released binaries. The same commit is pinned in
 `.github/workflows/check_build.yml` as `MUESLI_COMMIT`, and the three should be kept in step.
 
@@ -83,7 +83,7 @@ PREFIX=$HOME/dev/install
 
 git clone https://bitbucket.org/ignromero/muesli.git
 cd muesli
-git checkout be3500e9958ef79974fb1f588a8f885c442448ce
+git checkout d03610adcf0294693ad033bf6f475718fb4a8ca0
 git apply /path/to/libjlmuesli/patches/cmakesupport.patch
 
 cmake -B builddir \
