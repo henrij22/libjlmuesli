@@ -21,12 +21,19 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib;${JlCxx_location}")
 
 message(STATUS "Found JlCxx at ${JlCxx_location}")
 
+option(JLMUESLI_BUILD_TESTS "Build the C++ unit tests (requires doctest, fetched if absent)" ON)
+
 add_subdirectory(src)
 add_subdirectory(cmake)
 
 target_include_directories(jlmuesli PUBLIC "${CMAKE_SOURCE_DIR}/src")
 
 target_link_libraries(jlmuesli muesli JlCxx::cxxwrap_julia)
+
+if(JLMUESLI_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(test)
+endif()
 
 install(
   TARGETS jlmuesli

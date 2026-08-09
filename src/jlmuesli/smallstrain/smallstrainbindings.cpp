@@ -26,8 +26,9 @@ std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> regis
   });
   mat.method("getProperty", &Material::getProperty);
 
-  mat.constructor([](const MaterialProperties& properties) { return new Material{"Elastic", properties.multiMap()}; },
-                  arg("properties"));
+  mat.constructor(
+      [name](const MaterialProperties& properties) { return new Material{name, properties.multiMap()}; },
+      arg("properties"));
 
   mat.method("createMaterialPoint", &Material::createMaterialPoint);
 
@@ -113,7 +114,7 @@ std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> regis
                   [](MaterialPoint& mp, double t, const istensor& strain) { mp.updateCurrentState(t, strain); });
 
   if constexpr (registerConvergedState) {
-    mat.method("setConvergedState", [](MaterialPoint& mp, double theTime, const istensor& strain) {
+    mp.method("setConvergedState", [](MaterialPoint& mp, double theTime, const istensor& strain) {
       mp.setConvergedState(theTime, strain);
     });
   }

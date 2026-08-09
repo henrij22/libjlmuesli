@@ -58,13 +58,17 @@ jobs:
           # Run CMake with the specified prefix path
           cmake -DCMAKE_PREFIX_PATH="$PREFIX_PATH" ../
           
-          # Build the target
-          cmake --build . --parallel 2 --target jlmuesli
+          # Build everything, including the C++ unit tests
+          cmake --build . --parallel 2
 
-      - name: Test
+      - name: C++ unit tests
+        working-directory: ./repo/cmake-build-${{ matrix.config.name }}
+        run: ctest --output-on-failure
+
+      - name: Julia integration tests
         working-directory: ./repo
         run: |
-          julia -e 'import Pkg; Pkg.add("CxxWrap")'
-          julia julia/wrapmoduletest.jl ${GITHUB_WORKSPACE}/repo/cmake-build-${{ matrix.config.name }}/lib
+          julia --project=julia -e 'import Pkg; Pkg.instantiate()'
+          julia --project=julia julia/runtests.jl ${GITHUB_WORKSPACE}/repo/cmake-build-${{ matrix.config.name }}/lib
 
 
