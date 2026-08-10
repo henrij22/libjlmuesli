@@ -50,7 +50,10 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
     using Material      = muesli::elasticOrthotropicMaterial;
     using MaterialPoint = muesli::elasticOrthotropicMP;
 
-    auto [mat, mp] = registerSmallStrainMaterial<Material, MaterialPoint>(mod, "ElasticOrthotropic");
+    // derives from elasticAnisotropicMaterial in C++, not straight from smallStrainMaterial
+    auto [mat, mp] = registerSmallStrainMaterial<Material, MaterialPoint, true,
+                                                 muesli::elasticAnisotropicMaterial,
+                                                 muesli::elasticAnisotropicMP>(mod, "ElasticOrthotropic");
     mat.constructor(
         [](JuliaVector c, double rho = 1.0) {
           const double* data = assertSizeAndExtractData(c, 9);
@@ -62,7 +65,11 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
     using Material      = muesli::elasticTransverselyisotropicMaterial;
     using MaterialPoint = muesli::elasticTransverselyisotropicMP;
 
-    auto [mat, mp] = registerSmallStrainMaterial<Material, MaterialPoint>(mod, "ElasticTransverselyisotropic");
+    // likewise derives from elasticAnisotropicMaterial
+    auto [mat, mp] = registerSmallStrainMaterial<Material, MaterialPoint, true,
+                                                 muesli::elasticAnisotropicMaterial,
+                                                 muesli::elasticAnisotropicMP>(
+        mod, "ElasticTransverselyisotropic");
     mat.constructor(
         [](JuliaVector c, double rho = 1.0) {
           const double* data = assertSizeAndExtractData(c, 6);

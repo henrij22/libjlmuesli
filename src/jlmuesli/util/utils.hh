@@ -5,7 +5,24 @@
 
 #include <muesli/muesli.h>
 
+#include <string>
+
 #include <jlcxx/jlcxx.hpp>
+
+/// The MUESLI material name corresponding to a wrapper registration prefix.
+///
+/// `registerSmallStrainMaterial`/`registerFiniteStrainMaterial` take one string that is used
+/// as the prefix of the Julia type names (`<name>Material`, `<name>MP`). For the damage models
+/// that prefix carries a trailing underscore -- "GTN_" gives `GTN_Material` -- purely so the
+/// Julia names read well. MUESLI must not see that underscore: its own constructors are called
+/// with "GTN", the name is stored on the material and materialFactory looks materials up by it,
+/// so passing "GTN_" would make the property-map route disagree with the direct constructors.
+inline std::string muesliMaterialName(const std::string& wrapperName) {
+  std::string name = wrapperName;
+  while (!name.empty() && name.back() == '_')
+    name.pop_back();
+  return name;
+}
 
 // helpers.cpp
 struct MultiMapWrapper

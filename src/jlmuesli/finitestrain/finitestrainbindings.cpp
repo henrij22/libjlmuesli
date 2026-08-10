@@ -28,7 +28,9 @@ std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> regis
   mat.method("getProperty", &Material::getProperty);
 
   mat.constructor(
-      [name](const MaterialProperties& properties) { return new Material{name, properties.multiMap()}; },
+      [muesliName = muesliMaterialName(name)](const MaterialProperties& properties) {
+        return new Material{muesliName, properties.multiMap()};
+      },
       arg("properties"));
 
   auto mp =

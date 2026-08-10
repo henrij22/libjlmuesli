@@ -27,7 +27,9 @@ std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> regis
   mat.method("getProperty", &Material::getProperty);
 
   mat.constructor(
-      [name](const MaterialProperties& properties) { return new Material{name, properties.multiMap()}; },
+      [muesliName = muesliMaterialName(name)](const MaterialProperties& properties) {
+        return new Material{muesliName, properties.multiMap()};
+      },
       arg("properties"));
 
   mat.method("createMaterialPoint", &Material::createMaterialPoint);
@@ -134,11 +136,20 @@ std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> regis
   template std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialMP>> \
   registerSmallStrainMaterial<Material, MaterialMP>(jlcxx::Module&, const std::string&);
 
+// as above, but for a material that derives from something other than the small strain base
+// while still registering setConvergedState
+#define INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE_T(Material, MaterialMP, MaterialBase, MPBase) \
+  template std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialMP>>           \
+  registerSmallStrainMaterial<Material, MaterialMP, true, MaterialBase, MPBase>(jlcxx::Module&, const std::string&);
+
 // Use the macro for explicit instantiations
 INSTANTIATE_SMALL_STRAIN_MATERIAL(muesli::elasticIsotropicMaterial, muesli::elasticIsotropicMP)
 INSTANTIATE_SMALL_STRAIN_MATERIAL(muesli::elasticAnisotropicMaterial, muesli::elasticAnisotropicMP)
-INSTANTIATE_SMALL_STRAIN_MATERIAL(muesli::elasticOrthotropicMaterial, muesli::elasticOrthotropicMP)
-INSTANTIATE_SMALL_STRAIN_MATERIAL(muesli::elasticTransverselyisotropicMaterial, muesli::elasticTransverselyisotropicMP)
+INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE_T(muesli::elasticOrthotropicMaterial, muesli::elasticOrthotropicMP,
+                                         muesli::elasticAnisotropicMaterial, muesli::elasticAnisotropicMP)
+INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE_T(muesli::elasticTransverselyisotropicMaterial,
+                                         muesli::elasticTransverselyisotropicMP,
+                                         muesli::elasticAnisotropicMaterial, muesli::elasticAnisotropicMP)
 INSTANTIATE_SMALL_STRAIN_MATERIAL_F(muesli::splasticMaterial, muesli::splasticMP)
 INSTANTIATE_SMALL_STRAIN_MATERIAL_F(muesli::viscoelasticMaterial, muesli::viscoelasticMP)
 INSTANTIATE_SMALL_STRAIN_MATERIAL_F(muesli::viscoplasticMaterial, muesli::viscoplasticMP)

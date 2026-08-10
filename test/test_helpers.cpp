@@ -103,3 +103,39 @@ TEST_CASE("a material built from those properties agrees with the direct constru
   CHECK(direct.getProperty(muesli::PR_YOUNG) == doctest::Approx(fromProps.getProperty(muesli::PR_YOUNG)));
   CHECK(direct.getProperty(muesli::PR_POISSON) == doctest::Approx(fromProps.getProperty(muesli::PR_POISSON)));
 }
+
+TEST_CASE("muesliMaterialName strips the Julia naming suffix") {
+  // The registration prefix doubles as the Julia type-name prefix, so the damage models carry
+  // a trailing underscore ("GTN_" -> GTN_Material). MUESLI must not see it.
+  CHECK(muesliMaterialName("GTN_") == "GTN");
+  CHECK(muesliMaterialName("Gurson_") == "Gurson");
+  CHECK(muesliMaterialName("Lemaitre_") == "Lemaitre");
+  CHECK(muesliMaterialName("LemKin_") == "LemKin");
+
+  SUBCASE("names without a suffix are untouched") {
+    CHECK(muesliMaterialName("ElasticIsotropic") == "ElasticIsotropic");
+    CHECK(muesliMaterialName("SVK") == "SVK");
+    CHECK(muesliMaterialName("") == "");
+  }
+}
+
+TEST_CASE("both construction routes give a material the same MUESLI name") {
+  // Regression: the property-map constructor used to be handed the registration prefix
+  // verbatim, so a GTN material built that way was named "GTN_" while the direct constructor
+  // named it "GTN". The name is stored on the material and materialFactory looks materials up
+  // by it, so the two routes have to agree.
+  const double E = 210000.0, nu = 0.3, rho = 1.0, q1 = 1.5, q2 = 1.0, yield = 200.0;
+
+  auto props = toMPM_Enu(E, nu);
+  props.insert({"q1", q1});
+  props.insert({"q2", q2});
+  props.insert({"yield", yield});
+  props.insert({"density", rho});
+
+  muesli::GTN_Material direct{"GTN", E, nu, rho, q1, q2, yield};
+  muesli::GTN_Material fromProps{muesliMaterialName("GTN_"), props};
+
+  CHECK(direct.name() == "GTN");
+  CHECK(fromProps.name() == "GTN");
+  CHECK(direct.name() == fromProps.name());
+}

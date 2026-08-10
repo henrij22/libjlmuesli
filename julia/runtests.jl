@@ -177,6 +177,72 @@ const λ, μ = lame(E, ν)
         end
     end
 
+    @testset "The Julia type hierarchy mirrors the C++ one" begin
+        # jlcxx has two independent views of inheritance: the Julia supertype declared by
+        # add_type(..., julia_base_type<Base>()), and SuperType<T>, which cxxupcast uses to
+        # reach inherited methods. They have to agree, or Julia dispatch and the C++ cast
+        # chain disagree about what a type is.
+        @test M.SmallStrainMaterial <: M.Material
+        @test M.SmallStrainMP <: M.MaterialPoint
+        @test M.ElasticIsotropicMaterial <: M.SmallStrainMaterial
+        @test M.ElasticAnisotropicMaterial <: M.SmallStrainMaterial
+
+        @testset "orthotropic families refine the anisotropic material, not the base" begin
+            @test M.ElasticOrthotropicMaterial <: M.ElasticAnisotropicMaterial
+            @test M.ElasticOrthotropicMP <: M.ElasticAnisotropicMP
+            @test M.ElasticTransverselyisotropicMaterial <: M.ElasticAnisotropicMaterial
+            @test M.ElasticTransverselyisotropicMP <: M.ElasticAnisotropicMP
+        end
+
+        @testset "damage models refine the damage base" begin
+            for T in (M.GTN_Material, M.Gurson_Material, M.Lemaitre_Material, M.LemKin_Material)
+                @test T <: M.SdamageMaterial
+            end
+            for T in (M.GTN_MP, M.Gurson_MP, M.Lemaitre_MP, M.LemKin_MP)
+                @test T <: M.SdamageMP
+            end
+        end
+
+        @testset "finite strain" begin
+            @test M.FiniteStrainMaterial <: M.Material
+            @test M.NeoHookeMaterial <: M.F_invariants
+            @test M.YeohMaterial <: M.F_invariants
+            @test M.SVKMaterial <: M.FiniteStrainMaterial
+            @test M.NeoHookeMP <: M.FisotropicMP
+        end
+
+        @testset "inherited methods reach through the longer upcast chain" begin
+            # What matters here is dispatch: a method registered on a base wrapper must be
+            # callable on a type that now sits two levels below it. Only reachability is
+            # asserted, not the values -- muesli's orthotropic constructors leave part of the
+            # material uninitialised, so check() and the stresses are not reproducible from
+            # one process to the next. See the note in the README.
+            c9 = [210000.0, 210000.0, 210000.0, 80000.0, 80000.0, 80000.0, 0.3, 0.3, 0.3]
+            ortho = M.ElasticOrthotropicMaterial(c9, 1.0)
+
+            @test M.check(ortho) isa Bool                     # registered on the material
+            @test M.createMaterialPoint(ortho) !== nothing
+
+            mp = M.ElasticOrthotropicMP(ortho)
+            M.updateCurrentState(mp, 1.0, M.Istensor([0.001 0.0 0.0; 0.0 0.0 0.0; 0.0 0.0 0.0]))
+            σ = M.Istensor()
+            @test (M.stress!(mp, σ); true)                    # registered on the MP
+            @test M.storedEnergy(mp) isa Float64
+        end
+    end
+
+    @testset "Damage materials build from a property map" begin
+        # The property-map constructor used to be handed the registration prefix verbatim,
+        # naming these materials "GTN_" rather than "GTN".
+        props = properties("young" => E, "poisson" => ν, "density" => 1.0,
+                           "q1" => 1.5, "q2" => 1.0, "yield" => 200.0)
+        for (name, T) in (("GTN", M.GTN_Material), ("Gurson", M.Gurson_Material))
+            @testset "$name" begin
+                @test M.check(T(props))
+            end
+        end
+    end
+
     @testset "Small strain: built from MaterialProperties" begin
         # The material name used to be hard-coded as "Elastic" for every material built
         # this way; both routes must give the same material.
