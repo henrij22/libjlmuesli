@@ -18,7 +18,7 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
   // Register utils
   registerTensors(mod);
   registerHelpers(mod);
-  registerMaterialState(mod);
+  registerInterfaceState(mod);
   registerPropertyName(mod);
 
   // Register base classes (important?)

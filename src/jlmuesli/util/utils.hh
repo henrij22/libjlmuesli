@@ -72,7 +72,7 @@ void registerArrayOfTensorsT(jlcxx::Module& mod, const std::string& name);
 void registerHelpers(jlcxx::Module& mod);
 
 // materialstate.cpp
-void registerMaterialState(jlcxx::Module& mod);
+void registerInterfaceState(jlcxx::Module& mod);
 
 // propertynames.cpp
 void registerPropertyName(jlcxx::Module& mod);
