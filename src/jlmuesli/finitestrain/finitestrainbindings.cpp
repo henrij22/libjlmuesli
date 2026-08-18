@@ -27,8 +27,11 @@ std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> regis
   });
   mat.method("getProperty", &Material::getProperty);
 
-  mat.constructor([](const MaterialProperties& properties) { return new Material{"Finite", properties.multiMap()}; },
-                  arg("properties"));
+  mat.constructor(
+      [muesliName = muesliMaterialName(name)](const MaterialProperties& properties) {
+        return new Material{muesliName, properties.multiMap()};
+      },
+      arg("properties"));
 
   auto mp =
       mod.add_type<MaterialPoint>(mpName, jlcxx::julia_base_type<MaterialPointBase>())

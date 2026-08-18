@@ -9,6 +9,8 @@
 #include <muesli/Math/mtensor.h>
 #include <muesli/muesli.h>
 
+#include "supertypes.hh"
+
 #include <jlcxx/array.hpp>
 
 #include <julia.h>

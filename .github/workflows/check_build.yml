@@ -2,69 +2,155 @@
 # SPDX-License-Identifier: MIT
 
 name: Check build
+
 on:
   push:
+    branches:
+      - main
     paths-ignore:
       - "**/*.md"
-
   pull_request:
-    types: [opened]
+    types: [opened, synchronize, reopened]
     branches:
       - main
   workflow_dispatch:
-  
+
 concurrency:
   # Skip intermediate builds: always.
   # Cancel intermediate builds: only if it is a pull request build.
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+# Keep in sync with the commit MuesliMaterials pins in Yggdrasil:
+# https://github.com/JuliaPackaging/Yggdrasil/blob/master/M/MuesliMaterials/build_tarballs.jl
+# Also update in Readme
+env:
+  MUESLI_COMMIT: 345c6c044f6cecd347442b19aeb707a338fd5e9e
+
 jobs:
-  Build:
-    name: ${{ matrix.config.name }}
+  build-muesli:
+    name: Build MUESLI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check MUESLI cache
+        uses: actions/cache@v4
+        id: muesli-cache
+        with:
+          path: /tmp/muesli-install
+          key: muesli-${{ env.MUESLI_COMMIT }}-${{ runner.os }}
+
+      - name: Install system dependencies
+        if: steps.muesli-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            git \
+            libeigen3-dev \
+            libopenblas-dev \
+            liblapack-dev
+
+      - name: Clone MUESLI at the pinned commit
+        if: steps.muesli-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone https://bitbucket.org/ignromero/muesli.git /tmp/muesli-src
+          cd /tmp/muesli-src
+          git checkout "${MUESLI_COMMIT}"
+
+      - name: Add CMake support
+        if: steps.muesli-cache.outputs.cache-hit != 'true'
+        # MUESLI ships no build system of its own. This is the same patch Yggdrasil applies.
+        run: |
+          cd /tmp/muesli-src
+          git apply "${GITHUB_WORKSPACE}/patches/cmakesupport.patch"
+
+      - name: Build and install MUESLI
+        if: steps.muesli-cache.outputs.cache-hit != 'true'
+        run: |
+          cd /tmp/muesli-src
+          cmake -B builddir \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/tmp/muesli-install \
+            -DCMAKE_CXX_FLAGS="-I/usr/include/eigen3"
+          cmake --build builddir --parallel 4
+          cmake --install builddir
+
+  test:
+    name: Julia ${{ matrix.julia-version }}
+    needs: build-muesli
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        config:
-          - {
-              name: "ubuntu-gcc",
-              container: "henrij22/ubuntu-julia-muesli:latest",
-            }
-    container:
-      image: ${{ matrix.config.container }}
-      options: --memory-swap="20g" --memory="20g" --cpus="2" --user root
+        julia-version: ['1.11', '1.12', 'pre']
+
     steps:
-      - uses: actions/checkout@v4
-        with:
-          path: "repo"
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Build
-        working-directory: ./repo
+      - name: Install system dependencies
         run: |
-          # Create and navigate to the build directory
-          mkdir cmake-build-${{ matrix.config.name }}
-          cd cmake-build-${{ matrix.config.name }}
-          
-          # Read the contents of temp/prefix
-          if [ -f /tmp/prefix.txt ]; then
-            PREFIX_PATH=$(tr -d '\n' < /tmp/prefix.txt)
-            echo "CMAKE_PREFIX_PATH set to: '$PREFIX_PATH'"
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            libeigen3-dev \
+            libopenblas-dev \
+            liblapack-dev
 
-          else
-            echo "/tmp/prefix.txt file not found!"
+      - name: Restore MUESLI
+        uses: actions/cache@v4
+        with:
+          path: /tmp/muesli-install
+          key: muesli-${{ env.MUESLI_COMMIT }}-${{ runner.os }}
+          fail-on-cache-miss: true
+
+      - name: Set up Julia ${{ matrix.julia-version }}
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.julia-version }}
+
+      - name: Install Julia dependencies
+        run: julia --project=julia -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Locate libcxxwrap-julia and libjulia
+        id: julia-paths
+        run: |
+          CXXWRAP_PREFIX=$(julia --project=julia -e 'using CxxWrap; print(CxxWrap.prefix_path())')
+          # The C++ tests link libjulia transitively through libcxxwrap_julia, and an
+          # executable has to resolve those symbols at link time. Ask Julia for the path
+          # rather than relying on CMake finding the executable on PATH.
+          JULIA_LIB=$(julia --startup-file=no -e 'using Libdl; print(abspath(Libdl.dlpath("libjulia")))')
+          echo "cxxwrap=$CXXWRAP_PREFIX" >> $GITHUB_OUTPUT
+          echo "julialib=$JULIA_LIB" >> $GITHUB_OUTPUT
+          echo "libcxxwrap-julia: $CXXWRAP_PREFIX"
+          echo "libjulia:         $JULIA_LIB"
+
+      - name: Build libjlmuesli
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="/tmp/muesli-install;${{ steps.julia-paths.outputs.cxxwrap }}" \
+            -DJulia_LIBRARY="${{ steps.julia-paths.outputs.julialib }}" \
+            -DCMAKE_CXX_FLAGS="-I/usr/include/eigen3"
+          cmake --build build --parallel 4
+
+      - name: C++ unit tests
+        working-directory: build
+        run: |
+          # `ctest` on an empty test set would pass silently, and the tests are skipped when
+          # Julia is not found -- make that a failure rather than a green tick.
+          if [ "$(ctest --show-only=json-v1 | grep -c '"name"')" -eq 0 ]; then
+            echo "::error::No C++ tests were registered -- did CMake skip them?"
             exit 1
           fi
-          
-          # Run CMake with the specified prefix path
-          cmake -DCMAKE_PREFIX_PATH="$PREFIX_PATH" ../
-          
-          # Build the target
-          cmake --build . --parallel 2 --target jlmuesli
+          ctest --output-on-failure
 
-      - name: Test
-        working-directory: ./repo
-        run: |
-          julia -e 'import Pkg; Pkg.add("CxxWrap")'
-          julia julia/wrapmoduletest.jl ${GITHUB_WORKSPACE}/repo/cmake-build-${{ matrix.config.name }}/lib
-
-
+      - name: Julia integration tests
+        env:
+          LD_LIBRARY_PATH: /tmp/muesli-install/lib:${{ github.workspace }}/build/lib
+        run: julia --project=julia julia/runtests.jl "${GITHUB_WORKSPACE}/build/lib"

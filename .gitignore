@@ -16,3 +16,5 @@ cmake-build-release-dockerfull/
 cmake-build-relwithdebinfo/
 *.pyc
 .cache/
+
+Manifest.toml
