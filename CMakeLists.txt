@@ -23,6 +23,14 @@ message(STATUS "Found JlCxx at ${JlCxx_location}")
 
 option(JLMUESLI_BUILD_TESTS "Build the C++ unit tests (requires doctest, fetched if absent)" ON)
 
+# A cross build cannot run the resulting test binary, and the BinaryBuilder sandbox that
+# produces the JLL has no network for FetchContent to pull doctest with. Turn the tests
+# off there rather than making every release recipe remember to pass the flag.
+if(JLMUESLI_BUILD_TESTS AND CMAKE_CROSSCOMPILING)
+  message(STATUS "Cross-compiling: not building the C++ tests")
+  set(JLMUESLI_BUILD_TESTS OFF)
+endif()
+
 add_subdirectory(src)
 add_subdirectory(cmake)
 
@@ -35,9 +43,13 @@ if(JLMUESLI_BUILD_TESTS)
   add_subdirectory(test)
 endif()
 
+# On Windows the DLL is a RUNTIME artefact, not a LIBRARY one (the import .a is the
+# ARCHIVE). It has to land in bin/, which is where BinaryBuilder's ${libdir} points on
+# mingw and where the JLL looks for it. Installing it to lib/ instead is what forced the
+# build recipe to move the .dll by hand afterwards.
 install(
   TARGETS jlmuesli
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
-  RUNTIME DESTINATION lib
+  RUNTIME DESTINATION bin
 )
