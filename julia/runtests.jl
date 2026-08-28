@@ -177,6 +177,46 @@ const λ, μ = lame(E, ν)
         end
     end
 
+    @testset "Small strain: transversely isotropic elasticity, engineering constants" begin
+        # Regression test for the engineering-constants overload of
+        # ElasticTransverselyisotropicMaterial, added alongside the existing stiffness-vector
+        # form. Unlike that vector form (see the note above about uninitialised entries), this
+        # constructor zeroes the whole stiffness matrix before filling it in, so check() and
+        # the stresses below are fully deterministic.
+        E1, E2, v12, G23, G12 = 210000.0, 70000.0, 0.3, 25000.0, 30000.0
+        mat = M.ElasticTransverselyisotropicMaterial(E1, E2, v12, G23, G12, 1.0)
+        @test M.check(mat) isa Bool
+
+        # Replicates muesli's own derivation in
+        # elasticTransverselyisotropicMaterial::elasticTransverselyisotropicMaterial(name, E1,
+        # E2, v12, G23, G12, rhox), to check the constructor end to end against the resulting
+        # stresses rather than just that it runs.
+        v21 = E2 / E1 * v12
+        v23 = E2 / (2.0 * G23) - 1.0
+        lam = (v12 * v21 + v23) / ((1.0 - v23 - 2.0 * v12 * v21) * (1.0 + v23)) * E2
+        C11 = (1.0 - v23) / (1.0 - v23 - 2.0 * v12 * v21) * E1
+        C12 = 2.0 * v12 * (lam + G23)   # == C13, by transverse symmetry about the x axis
+        C22 = lam + 2.0 * G23           # == C33
+        C23 = lam
+
+        mp1 = M.ElasticTransverselyisotropicMP(mat)
+        M.updateCurrentState(mp1, 1.0, M.Istensor([0.001 0.0 0.0; 0.0 0.0 0.0; 0.0 0.0 0.0]))
+        σ1 = M.Istensor()
+        M.stress!(mp1, σ1)
+        got1 = mat3(σ1)
+        @test got1[1, 1] ≈ C11 * 0.001 rtol = 1e-10
+        @test got1[2, 2] ≈ C12 * 0.001 rtol = 1e-10
+        @test got1[3, 3] ≈ C12 * 0.001 rtol = 1e-10
+
+        mp2 = M.ElasticTransverselyisotropicMP(mat)
+        M.updateCurrentState(mp2, 1.0, M.Istensor([0.0 0.0 0.0; 0.0 0.001 0.0; 0.0 0.0 0.0]))
+        σ2 = M.Istensor()
+        M.stress!(mp2, σ2)
+        got2 = mat3(σ2)
+        @test got2[2, 2] ≈ C22 * 0.001 rtol = 1e-10
+        @test got2[3, 3] ≈ C23 * 0.001 rtol = 1e-10
+    end
+
     @testset "The Julia type hierarchy mirrors the C++ one" begin
         # jlcxx has two independent views of inheritance: the Julia supertype declared by
         # add_type(..., julia_base_type<Base>()), and SuperType<T>, which cxxupcast uses to
