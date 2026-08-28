@@ -76,6 +76,14 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
           return new Material{"ElasticTransverselyisotropic", data, rho};
         },
         arg("c"), arg("rho") = 1.0);
+    // the engineering-constants overload, with the axis of symmetry along x: E1 is the
+    // axial modulus, E2 the transverse one, v12 the axial-transverse Poisson's ratio, and
+    // G23/G12 the transverse and axial-transverse shear moduli
+    mat.constructor(
+        [](double E1, double E2, double v12, double G23, double G12, double rho = 1.0) {
+          return new Material{"ElasticTransverselyisotropic", E1, E2, v12, G23, G12, rho};
+        },
+        arg("E1"), arg("E2"), arg("v12"), arg("G23"), arg("G12"), arg("rho") = 1.0);
   }
   {
     using Material      = muesli::splasticMaterial;
