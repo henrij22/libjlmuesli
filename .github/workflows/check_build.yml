@@ -25,7 +25,7 @@ concurrency:
 # https://github.com/JuliaPackaging/Yggdrasil/blob/master/M/MuesliMaterials/build_tarballs.jl
 # Also update in Readme
 env:
-  MUESLI_COMMIT: 345c6c044f6cecd347442b19aeb707a338fd5e9e
+  MUESLI_COMMIT: 0ac882e83594ee266b3e6eb90ae865256993d210
 
 jobs:
   build-muesli:
@@ -57,7 +57,7 @@ jobs:
       - name: Clone MUESLI at the pinned commit
         if: steps.muesli-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://bitbucket.org/ignromero/muesli.git /tmp/muesli-src
+          git clone https://github.com/henrij22/libjlmuesli.git /tmp/muesli-src
           cd /tmp/muesli-src
           git checkout "${MUESLI_COMMIT}"
 
