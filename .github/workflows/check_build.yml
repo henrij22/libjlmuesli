@@ -25,7 +25,7 @@ concurrency:
 # https://github.com/JuliaPackaging/Yggdrasil/blob/master/M/MuesliMaterials/build_tarballs.jl
 # Also update in Readme
 env:
-  MUESLI_COMMIT: 0ac882e83594ee266b3e6eb90ae865256993d210
+  MUESLI_COMMIT: 52df6390181aca4b2add1bbc9531c636b8b4160f
 
 jobs:
   build-muesli:
