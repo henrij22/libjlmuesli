@@ -33,10 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Check MUESLI cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: muesli-cache
         with:
           path: /tmp/muesli-install
@@ -90,7 +90,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install system dependencies
         run: |
@@ -103,14 +103,14 @@ jobs:
             liblapack-dev
 
       - name: Restore MUESLI
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /tmp/muesli-install
           key: muesli-${{ env.MUESLI_COMMIT }}-${{ runner.os }}
           fail-on-cache-miss: true
 
       - name: Set up Julia ${{ matrix.julia-version }}
-        uses: julia-actions/setup-julia@v2
+        uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.julia-version }}
 
