@@ -57,7 +57,7 @@ jobs:
       - name: Clone MUESLI at the pinned commit
         if: steps.muesli-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://github.com/henrij22/libjlmuesli.git /tmp/muesli-src
+          git clone https://gitlab.com/ignacio.romero/muesli.git /tmp/muesli-src
           cd /tmp/muesli-src
           git checkout "${MUESLI_COMMIT}"
 
