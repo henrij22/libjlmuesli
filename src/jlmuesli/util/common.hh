@@ -3,13 +3,16 @@
 
 #pragma once
 
+#include "convert.hh"
+#include "supertypes.hh"
+
+#include <array>
 #include <cstddef>
+#include <stdexcept>
 #include <string>
 
 #include <muesli/Math/mtensor.h>
 #include <muesli/muesli.h>
-
-#include "supertypes.hh"
 
 #include <jlcxx/array.hpp>
 
@@ -26,86 +29,84 @@ using JuliaTensor  = jlcxx::ArrayRef<double, 2>;
 using JuliaVector  = jlcxx::ArrayRef<double, 1>;
 using JuliaTensor4 = jlcxx::ArrayRef<double, 4>;
 
-inline const double* assertSizeAndExtractData(JuliaVector c, size_t expectedSize) {
+namespace jlmuesli {
+
+namespace detail {
+
+  template <std::size_t N>
+  std::string shapeString(const std::array<std::size_t, N>& dims) {
+    std::string s;
+    for (std::size_t d = 0; d < N; ++d)
+      s += (d ? "x" : "") + std::to_string(dims[d]);
+    return s;
+  }
+
+  /// A flat length check would accept a 1x9 or 9x1 matrix as a 3x3 tensor.
+  template <std::size_t N>
+  void requireShape(const jlcxx::ArrayRef<double, N>& array, const std::array<std::size_t, N>& expected) {
+    bool ok = array.size() == [&] {
+      std::size_t n = 1;
+      for (auto e : expected)
+        n *= e;
+      return n;
+    }();
+
+#ifdef jl_array_dim
+    // falls back to the length check above if a Julia version drops this macro
+    if (ok) {
+      for (std::size_t d = 0; d < N; ++d)
+        ok = ok && jl_array_dim(array.wrapped(), d) == expected[d];
+    }
+#endif
+
+    if (!ok)
+      throw std::invalid_argument("Input has to be a " + shapeString(expected) + " array, got " +
+                                  std::to_string(array.size()) + " element(s).");
+  }
+
+} // namespace detail
+
+inline const double* checkedData(const JuliaVector& v) {
+  detail::requireShape<1>(v, {kVectorSize});
+  return v.data();
+}
+inline const double* checkedData(const JuliaTensor& t) {
+  detail::requireShape<2>(t, {3, 3});
+  return t.data();
+}
+inline const double* checkedData(const JuliaTensor4& T) {
+  detail::requireShape<4>(T, {3, 3, 3, 3});
+  return T.data();
+}
+inline double* checkedData(JuliaVector& v) {
+  detail::requireShape<1>(v, {kVectorSize});
+  return v.data();
+}
+inline double* checkedData(JuliaTensor& t) {
+  detail::requireShape<2>(t, {3, 3});
+  return t.data();
+}
+inline double* checkedData(JuliaTensor4& T) {
+  detail::requireShape<4>(T, {3, 3, 3, 3});
+  return T.data();
+}
+
+} // namespace jlmuesli
+
+// flat parameter vectors of the anisotropic materials; their length depends on the material
+inline const double* assertSizeAndExtractData(const JuliaVector& c, std::size_t expectedSize) {
   if (c.size() != expectedSize)
-    throw std::invalid_argument("Input has to be a " + std::to_string(expectedSize) + " vector.");
-  const double* data = c.data();
-  return data;
+    throw std::invalid_argument("Input has to be a vector of length " + std::to_string(expectedSize) + ", got " +
+                                std::to_string(c.size()) + ".");
+  return c.data();
 }
 
-inline const double* assertSizeAndExtractData(JuliaTensor c, std::pair<size_t, size_t> expectedSizes) {
-  if (c.size() != expectedSizes.first * expectedSizes.second)
-    throw std::invalid_argument("Input has to be a " + std::to_string(expectedSizes.first) + " x " +
-                                std::to_string(expectedSizes.second) + " matrix.");
-  const double* data = c.data();
-  return data;
-}
+inline ivector toIVector(const JuliaVector& v) { return jlmuesli::ivectorFromColumnMajor(jlmuesli::checkedData(v)); }
 
-inline auto toIVector(JuliaVector vec) {
-  const double* data = assertSizeAndExtractData(vec, 3);
-  return ivector{vec.data()};
-}
+inline itensor toITensor(const JuliaTensor& a) { return jlmuesli::itensorFromColumnMajor(jlmuesli::checkedData(a)); }
 
-inline auto toITensor(JuliaTensor array) {
-  // Validate that the input is 3x3
-  const double* data = assertSizeAndExtractData(array, {3, 3});
+inline istensor toIstensor(const JuliaTensor& a) { return jlmuesli::istensorFromColumnMajor(jlmuesli::checkedData(a)); }
 
-  // Construct the itensor in row-major order:
-  // Row 1: A[1,1], A[1,2], A[1,3]
-  // Row 2: A[2,1], A[2,2], A[2,3]
-  // Row 3: A[3,1], A[3,2], A[3,3]
-  return itensor(data[0], data[3], data[6], // Row 1
-                 data[1], data[4], data[7], // Row 2
-                 data[2], data[5], data[8]  // Row 3
-  );
-}
-
-inline istensor toIstensor(const JuliaTensor& array) {
-  // 2) Extract the raw data pointer in row-major order: data[i * 3 + j].
-  const double* data = assertSizeAndExtractData(array, {3, 3});
-
-  // 3) Read the six unique components for the symmetric matrix.
-  //    According to istensor constructor:
-  //    istensor(const double t00, const double t11, const double t22,
-  //             const double t12, const double t20, const double t01);
-  //
-  //    We assume the following mapping:
-  //      a[0][0] = t00
-  //      a[1][1] = t11
-  //      a[2][2] = t22
-  //      a[1][2] = a[2][1] = t12
-  //      a[2][0] = a[0][2] = t20
-  //      a[0][1] = a[1][0] = t01
-  //
-  //    So for row i, column j, the data index is i*3 + j.
-
-  double t00 = data[0 * 3 + 0];
-  double t11 = data[1 * 3 + 1];
-  double t22 = data[2 * 3 + 2];
-  double t12 = data[1 * 3 + 2];
-  double t20 = data[2 * 3 + 0];
-  double t01 = data[0 * 3 + 1];
-
-  // 4) Construct and return the istensor.
-  return istensor(t00, t11, t22, t12, t20, t01);
-}
-inline itensor4 toItensor4(const jlcxx::ArrayRef<double, 4>& array) {
-  // Validate that the input array is 3x3x3x3 (3^4 = 81 elements)
-  if (array.size() != 81)
-    throw std::invalid_argument("Input has to be a 3x3x3x3 array.");
-
-  // Create an empty itensor4
-  itensor4 T;
-  const double* data = array.data();
-
-  // Populate the itensor4, using column-major indexing.
-  // For a Julia array, the linear index is: i + 3*j + 9*k + 27*l
-  for (size_t i = 0; i < 3; ++i)
-    for (size_t j = 0; j < 3; ++j)
-      for (size_t k = 0; k < 3; ++k)
-        for (size_t l = 0; l < 3; ++l)
-          T(i, j, k, l) = data[i + 3 * j + 9 * k + 27 * l];
-  // T(i, j, k, l) = data[i * 27 + j * 9 + k * 3 + l];
-
-  return T;
+inline itensor4 toItensor4(const JuliaTensor4& a) {
+  return jlmuesli::itensor4FromColumnMajor(jlmuesli::checkedData(a));
 }

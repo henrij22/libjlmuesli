@@ -71,6 +71,9 @@ void registerArrayOfTensorsT(jlcxx::Module& mod, const std::string& name);
 
 void registerHelpers(jlcxx::Module& mod);
 
+// materialbase.cpp
+void registerMaterialBase(jlcxx::Module& mod);
+
 // materialstate.cpp
 void registerInterfaceState(jlcxx::Module& mod);
 

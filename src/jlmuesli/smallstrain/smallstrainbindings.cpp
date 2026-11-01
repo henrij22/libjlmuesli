@@ -9,154 +9,49 @@
 
 #include <jlcxx/jlcxx.hpp>
 
-template <typename Material, typename MaterialPoint, bool registerConvergedState, typename MaterialBase,
-          typename MaterialPointBase>
-std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> registerSmallStrainMaterial(
-    jlcxx::Module& mod, const std::string& name) {
-  using jlcxx::arg;
+// Registered once on the family root; all of these are virtual in smallStrainMP, so they
+// dispatch to the concrete material.
+void registerSmallStrainBase(jlcxx::Module& mod) {
+  using muesli::smallStrainMP;
 
-  std::string matName = name + "Material";
-  std::string mpName  = name + "MP";
+  mod.add_type<muesli::smallStrainMaterial>("SmallStrainMaterial", jlcxx::julia_base_type<muesli::material>());
 
-  auto mat = mod.add_type<Material>(matName, jlcxx::julia_base_type<MaterialBase>());
-  mat.method("check", &Material::check);
-  mat.method("print", [](Material& mat) {
-    mat.print(std::cout);
-    std::cout << std::endl;
-  });
-  mat.method("getProperty", &Material::getProperty);
+  mod.add_type<smallStrainMP>("SmallStrainMP", jlcxx::julia_base_type<muesli::materialPoint>())
+      // 3D response
+      .method("contractWithDeviatoricTangent!", [](const smallStrainMP& mp, const ivector& v1, const ivector& v2,
+                                                   itensor& T) { mp.contractWithDeviatoricTangent(v1, v2, T); })
+      .method("contractWithTangent!", [](const smallStrainMP& mp, const ivector& v1, const ivector& v2,
+                                         itensor& T) { mp.contractWithTangent(v1, v2, T); })
+      .method("contractWithMixedTangent!",
+              [](const smallStrainMP& mp, istensor& CM) { mp.contractWithMixedTangent(CM); })
+      .method("dissipationTangent!", [](const smallStrainMP& mp, itensor4& D) { mp.dissipationTangent(D); })
+      .method("plasticSlip", [](const smallStrainMP& mp) { return mp.plasticSlip(); })
+      .method("shearStiffness", [](const smallStrainMP& mp) { return mp.shearStiffness(); })
+      .method("tangentTensor!", [](const smallStrainMP& mp, itensor4& C) { mp.tangentTensor(C); })
+      // TODO: tangentMatrix (fills a C-style double[6][6])
+      .method("volumetricStiffness", [](const smallStrainMP& mp) { return mp.volumetricStiffness(); })
 
-  mat.constructor(
-      [muesliName = muesliMaterialName(name)](const MaterialProperties& properties) {
-        return new Material{muesliName, properties.multiMap()};
-      },
-      arg("properties"));
+      // Energy
+      .method("deviatoricEnergy", [](const smallStrainMP& mp) { return mp.deviatoricEnergy(); })
+      .method("energyDissipationInStep", [](const smallStrainMP& mp) { return mp.energyDissipationInStep(); })
+      .method("effectiveStoredEnergy", [](const smallStrainMP& mp) { return mp.effectiveStoredEnergy(); })
+      .method("kineticPotential", [](const smallStrainMP& mp) { return mp.kineticPotential(); })
+      .method("storedEnergy", [](const smallStrainMP& mp) { return mp.storedEnergy(); })
+      // TODO: thermodynamicPotentials (returns muesli::thPotentials)
+      .method("volumetricEnergy", [](const smallStrainMP& mp) { return mp.volumetricEnergy(); })
 
-  mat.method("createMaterialPoint", &Material::createMaterialPoint);
+      // Stresses
+      .method("pressure", [](const smallStrainMP& mp) { return mp.pressure(); })
+      .method("stress!", [](const smallStrainMP& mp, istensor& sigma) { mp.stress(sigma); })
+      .method("deviatoricStress!", [](const smallStrainMP& mp, istensor& sigma) { mp.deviatoricStress(sigma); })
 
-  auto mp =
-      mod.add_type<MaterialPoint>(mpName, jlcxx::julia_base_type<MaterialPointBase>())
-          .constructor([](const Material& sm) { return new MaterialPoint(sm); })
-          // ----------------------------------------------------------------------
-          // 3D response
-          // ----------------------------------------------------------------------
-          .method("contractWithDeviatoricTangent!", [](MaterialPoint& mp, const ivector& v1, const ivector& v2,
-                                                       itensor& T) { mp.contractWithDeviatoricTangent(v1, v2, T); })
+      // Strains / states
+      .method("getConvergedPlasticStrain",
+              [](const smallStrainMP& mp) -> istensor { return mp.getConvergedPlasticStrain(); })
+      .method("getCurrentPlasticStrain",
+              [](const smallStrainMP& mp) -> istensor { return mp.getCurrentPlasticStrain(); })
 
-          .method("contractWithTangent!", [](MaterialPoint& mp, const ivector& v1, const ivector& v2,
-                                             itensor& T) { mp.contractWithTangent(v1, v2, T); })
-          .method("contractWithMixedTangent!", [](MaterialPoint& mp, istensor& CM) { mp.contractWithMixedTangent(CM); })
-
-          .method("dissipationTangent!", [](MaterialPoint& mp, itensor4& D) { mp.dissipationTangent(D); })
-
-          .method("plasticSlip", [](MaterialPoint& mp) { return mp.plasticSlip(); })
-
-          .method("shearStiffness", [](MaterialPoint& mp) { return mp.shearStiffness(); })
-
-          .method("tangentTensor!", [](MaterialPoint& mp, itensor4& C) { mp.tangentTensor(C); })
-
-          // .method("tangentMatrix",
-          //         [](MaterialPoint& mp) {
-          //           // NOT IMPLEMENTED
-          //         })
-
-          .method("volumetricStiffness", [](MaterialPoint& mp) { return mp.volumetricStiffness(); })
-
-          // ----------------------------------------------------------------------
-          // Energy
-          // ----------------------------------------------------------------------
-          .method("deviatoricEnergy", [](MaterialPoint& mp) { return mp.deviatoricEnergy(); })
-
-          .method("energyDissipationInStep", [](MaterialPoint& mp) { return mp.energyDissipationInStep(); })
-
-          .method("effectiveStoredEnergy", [](MaterialPoint& mp) { return mp.effectiveStoredEnergy(); })
-
-          .method("kineticPotential", [](MaterialPoint& mp) { return mp.kineticPotential(); })
-
-          .method("storedEnergy", [](MaterialPoint& mp) { return mp.storedEnergy(); })
-
-          // .method("thermodynamicPotentials",
-          //         [](MaterialPoint& mp) {
-          //           // thPotentials is a custom return type; you need to ensure
-          //           // you have a jlcxx wrapper or to define how it is converted.
-          //           return mp.thermodynamicPotentials();
-          //         })
-
-          .method("volumetricEnergy", [](MaterialPoint& mp) { return mp.volumetricEnergy(); })
-
-          // ----------------------------------------------------------------------
-          // Stresses
-          // ----------------------------------------------------------------------
-          .method("pressure", [](MaterialPoint& mp) { return mp.pressure(); })
-
-          .method("stress!", [](MaterialPoint& mp, istensor& sigma) { mp.stress(sigma); })
-
-          .method("deviatoricStress!", [](MaterialPoint& mp, istensor& sigma) { mp.deviatoricStress(sigma); })
-
-          // ----------------------------------------------------------------------
-          // Strains / States
-          // ----------------------------------------------------------------------
-          .method("getConvergedPlasticStrain",
-                  [](MaterialPoint& mp) -> istensor { return mp.getConvergedPlasticStrain(); })
-
-          .method("getCurrentPlasticStrain", [](MaterialPoint& mp) -> istensor { return mp.getCurrentPlasticStrain(); })
-
-          .method("getConvergedState", [](MaterialPoint& mp) { return mp.getConvergedState(); })
-
-          .method("getCurrentState", [](MaterialPoint& mp) { return mp.getCurrentState(); })
-
-          // ----------------------------------------------------------------------
-          // Bookkeeping
-          // ----------------------------------------------------------------------
-          .method("commitCurrentState", [](MaterialPoint& mp) { mp.commitCurrentState(); })
-
-          .method("resetCurrentState", [](MaterialPoint& mp) { mp.resetCurrentState(); })
-
-          .method("updateCurrentState",
-                  [](MaterialPoint& mp, double t, const istensor& strain) { mp.updateCurrentState(t, strain); });
-
-  if constexpr (registerConvergedState) {
-    mp.method("setConvergedState", [](MaterialPoint& mp, double theTime, const istensor& strain) {
-      mp.setConvergedState(theTime, strain);
-    });
-  }
-
-  return std::make_pair(mat, mp);
+      // Bookkeeping (commit/reset/get*State are on MaterialPoint)
+      .method("updateCurrentState",
+              [](smallStrainMP& mp, double t, const istensor& strain) { mp.updateCurrentState(t, strain); });
 }
-
-#define INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE(Material, MaterialMP, MaterialBase, MPBase) \
-  template std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialMP>>         \
-  registerSmallStrainMaterial<Material, MaterialMP, false, MaterialBase, MPBase>(jlcxx::Module&, const std::string&);
-
-#define INSTANTIATE_SMALL_STRAIN_MATERIAL_F(Material, MaterialMP)                  \
-  template std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialMP>> \
-  registerSmallStrainMaterial<Material, MaterialMP, false>(jlcxx::Module&, const std::string&);
-
-#define INSTANTIATE_SMALL_STRAIN_MATERIAL(Material, MaterialMP)                    \
-  template std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialMP>> \
-  registerSmallStrainMaterial<Material, MaterialMP>(jlcxx::Module&, const std::string&);
-
-// as above, but for a material that derives from something other than the small strain base
-// while still registering setConvergedState
-#define INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE_T(Material, MaterialMP, MaterialBase, MPBase) \
-  template std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialMP>>           \
-  registerSmallStrainMaterial<Material, MaterialMP, true, MaterialBase, MPBase>(jlcxx::Module&, const std::string&);
-
-// Use the macro for explicit instantiations
-INSTANTIATE_SMALL_STRAIN_MATERIAL(muesli::elasticIsotropicMaterial, muesli::elasticIsotropicMP)
-INSTANTIATE_SMALL_STRAIN_MATERIAL(muesli::elasticAnisotropicMaterial, muesli::elasticAnisotropicMP)
-INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE_T(muesli::elasticOrthotropicMaterial, muesli::elasticOrthotropicMP,
-                                         muesli::elasticAnisotropicMaterial, muesli::elasticAnisotropicMP)
-INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE_T(muesli::elasticTransverselyisotropicMaterial,
-                                         muesli::elasticTransverselyisotropicMP,
-                                         muesli::elasticAnisotropicMaterial, muesli::elasticAnisotropicMP)
-INSTANTIATE_SMALL_STRAIN_MATERIAL_F(muesli::splasticMaterial, muesli::splasticMP)
-INSTANTIATE_SMALL_STRAIN_MATERIAL_F(muesli::viscoelasticMaterial, muesli::viscoelasticMP)
-INSTANTIATE_SMALL_STRAIN_MATERIAL_F(muesli::viscoplasticMaterial, muesli::viscoplasticMP)
-INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE(muesli::GTN_Material, muesli::GTN_MP, muesli::sdamageMaterial, muesli::sdamageMP)
-INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE(muesli::Gurson_Material, muesli::Gurson_MP, muesli::sdamageMaterial,
-                                       muesli::sdamageMP)
-INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE(muesli::Lemaitre_Material, muesli::Lemaitre_MP, muesli::sdamageMaterial,
-                                       muesli::sdamageMP)
-INSTANTIATE_SMALL_STRAIN_MATERIAL_BASE(muesli::LemKin_Material, muesli::LemKin_MP, muesli::sdamageMaterial,
-                                       muesli::sdamageMP)

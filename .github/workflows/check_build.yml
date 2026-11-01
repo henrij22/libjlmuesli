@@ -23,7 +23,7 @@ concurrency:
 
 # Keep in sync with the commit MuesliMaterials pins in Yggdrasil:
 # https://github.com/JuliaPackaging/Yggdrasil/blob/master/M/MuesliMaterials/build_tarballs.jl
-# Also update in Readme
+# and with the README.
 env:
   MUESLI_COMMIT: 52df6390181aca4b2add1bbc9531c636b8b4160f
 

@@ -405,4 +405,149 @@ const λ, μ = lame(E, ν)
             end
         end
     end
+
+    @testset "Bulk transfer between tensors and Julia arrays" begin
+        m = [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0]
+
+        @testset "toArray! copies without transposing" begin
+            A = zeros(3, 3)
+            M.toArray!(A, M.Itensor(m))
+            @test A == m
+        end
+
+        @testset "fromArray! overwrites an existing tensor" begin
+            t = M.Itensor(zeros(3, 3))
+            M.fromArray!(t, m)
+            @test mat3(t) == m
+        end
+
+        @testset "Ivector" begin
+            v = M.Ivector([1.0, 2.0, 3.0])
+            a = zeros(3)
+            M.toArray!(a, v)
+            @test a == [1.0, 2.0, 3.0]
+            M.fromArray!(v, [4.0, 5.0, 6.0])
+            @test [el(v, i) for i in 1:3] == [4.0, 5.0, 6.0]
+        end
+
+        @testset "Itensor4 keeps the first index fastest" begin
+            a = reshape(collect(1.0:81.0), 3, 3, 3, 3)
+            T = M.Itensor4(zeros(3, 3, 3, 3))
+            M.fromArray!(T, a)
+            @test ten4(T) == a
+            out = zeros(3, 3, 3, 3)
+            M.toArray!(out, T)
+            @test out == a
+        end
+
+        @testset "Istensor stores the symmetric part" begin
+            s = M.Istensor(zeros(3, 3))
+            M.fromArray!(s, m)
+            @test mat3(s) == (m + m') / 2
+            out = zeros(3, 3)
+            M.toArray!(out, s)
+            @test out == (m + m') / 2
+        end
+
+        @testset "constructors take the symmetric part of a non-symmetric matrix" begin
+            @test mat3(M.Istensor(m)) == (m + m') / 2
+            @test mat3(M.Istensor(collect(m'))) == (m + m') / 2
+        end
+
+        @testset "the shape is checked, not just the element count" begin
+            @test_throws Exception M.toArray!(zeros(1, 9), M.Itensor(m))
+            @test_throws Exception M.toArray!(zeros(9, 1), M.Itensor(m))
+            @test_throws Exception M.fromArray!(M.Itensor(m), zeros(1, 9))
+            @test_throws Exception M.Itensor(zeros(1, 9))
+            @test_throws Exception M.Itensor4(zeros(9, 9, 1, 1))
+            @test_throws Exception M.toArray!(zeros(2), M.Ivector([1.0, 2.0, 3.0]))
+        end
+
+        @testset "the error names the expected shape" begin
+            err = try
+                M.Itensor(zeros(2, 2))
+            catch e
+                e
+            end
+            @test occursin("3x3", sprint(showerror, err))
+        end
+    end
+
+    @testset "Properties shared by every material" begin
+        smallstrain = (
+            M.ElasticIsotropicMaterial(E, ν),
+            M.SplasticMaterial(E, ν, 1.0, 0.0, 0.0, 200.0, 0.0, "mises"),
+            M.GTN_Material(properties("young" => E, "poisson" => ν, "density" => 1.0,
+                                      "q1" => 1.5, "q2" => 1.0, "yield" => 200.0)),
+        )
+        finitestrain = (
+            M.NeoHookeMaterial(E, ν),
+            M.SVKMaterial(E, ν),
+            M.YeohMaterial(properties("young" => E, "poisson" => ν)),
+        )
+
+        for mat in (smallstrain..., finitestrain...)
+            @testset "$(M.name(mat))" begin
+                M.setDensity(mat, 7.85)
+                @test M.density(mat) == 7.85
+
+                M.setReferenceTemperature(mat, 293.0)
+                @test M.referenceTemperature(mat) == 293.0
+
+                @test !M.isVariational(mat)
+                M.setVariational(mat)
+                @test M.isVariational(mat)
+
+                @test !isempty(String(M.name(mat)))
+            end
+        end
+
+        @testset "a material point reports the density of its material" begin
+            mat = M.ElasticIsotropicMaterial(E, ν)
+            M.setDensity(mat, 3.0)
+            @test M.density(M.ElasticIsotropicMP(mat)) == 3.0
+
+            fmat = M.NeoHookeMaterial(E, ν)
+            M.setDensity(fmat, 4.0)
+            @test M.density(M.NeoHookeMP(fmat)) == 4.0
+        end
+    end
+
+    @testset "createMaterialPoint returns the concrete point type" begin
+        @test M.createMaterialPoint(M.ElasticIsotropicMaterial(E, ν)) isa M.ElasticIsotropicMP
+        @test M.createMaterialPoint(M.NeoHookeMaterial(E, ν)) isa M.NeoHookeMP
+        @test M.createMaterialPoint(M.SVKMaterial(E, ν)) isa M.SVKMP
+
+        mp = M.createMaterialPoint(M.ElasticIsotropicMaterial(E, ν))
+        ε = [0.001 0.0 0.0; 0.0 0.0 0.0; 0.0 0.0 0.0]
+        M.updateCurrentState(mp, 1.0, M.Istensor(ε))
+        σ = M.Istensor()
+        M.stress!(mp, σ)
+        @test mat3(σ) ≈ 2μ * ε + λ * ε[1, 1] * I3 rtol = 1e-10
+    end
+
+    @testset "Methods on the family roots reach every material" begin
+        @testset "small strain" begin
+            for mat in (M.ElasticIsotropicMaterial(E, ν),
+                        M.SplasticMaterial(E, ν, 1.0, 0.0, 0.0, 200.0, 0.0, "mises"),
+                        M.ViscoelasticMaterial(E, ν, 1.0, 1, [1.0], [1.0]))
+                mp = M.createMaterialPoint(mat)
+                M.updateCurrentState(mp, 1.0, M.Istensor(zeros(3, 3)))
+                M.commitCurrentState(mp)
+                @test M.storedEnergy(mp) ≈ 0.0 atol = 1e-12
+                @test M.getCurrentState(mp) isa M.InterfaceState
+            end
+        end
+
+        @testset "finite strain" begin
+            F = [1.02 0.01 0.0; 0.0 0.99 0.0; 0.0 0.0 1.0]
+            for mat in (M.NeoHookeMaterial(E, ν), M.SVKMaterial(E, ν))
+                mp = M.createMaterialPoint(mat)
+                M.updateCurrentState(mp, 1.0, M.Itensor(F))
+                M.commitCurrentState(mp)
+                @test mat3(M.convergedDeformationGradient(mp)) ≈ F
+                @test M.storedEnergy(mp) > 0
+            end
+        end
+    end
 end

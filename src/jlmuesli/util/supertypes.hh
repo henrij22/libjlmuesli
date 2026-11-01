@@ -36,6 +36,9 @@
 
 namespace jlcxx {
 
+// --- tensors -----------------------------------------------------------------------
+JLMUESLI_SUPERTYPE(istensor, itensor);
+
 // --- small strain ------------------------------------------------------------------
 JLMUESLI_SUPERTYPE(muesli::smallStrainMaterial, muesli::material);
 JLMUESLI_SUPERTYPE(muesli::smallStrainMP, muesli::materialPoint);
