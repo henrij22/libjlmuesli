@@ -41,6 +41,13 @@ inline void toColumnMajor(const itensor4& t, double* out) {
           out[i + 3 * j + 9 * k + 27 * l] = t(i, j, k, l);
 }
 
+/// Voigt matrices are filled by muesli as `double[6][6]`.
+inline void matrix6ToColumnMajor(const double (&C)[6][6], double* out) {
+  for (std::size_t j = 0; j < 6; ++j)
+    for (std::size_t i = 0; i < 6; ++i)
+      out[i + 6 * j] = C[i][j];
+}
+
 inline ivector ivectorFromColumnMajor(const double* in) { return ivector{in[0], in[1], in[2]}; }
 
 inline itensor itensorFromColumnMajor(const double* in) {

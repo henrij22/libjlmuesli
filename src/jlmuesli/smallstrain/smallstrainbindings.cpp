@@ -16,6 +16,18 @@ void registerSmallStrainBase(jlcxx::Module& mod) {
 
   mod.add_type<muesli::smallStrainMaterial>("SmallStrainMaterial", jlcxx::julia_base_type<muesli::material>());
 
+  mod.add_type<muesli::thPotentials>("ThPotentials")
+      .method("chemical", [](const muesli::thPotentials& p) { return p.chemical; })
+      .method("deviatoric", [](const muesli::thPotentials& p) { return p.deviatoric; })
+      .method("dissipated", [](const muesli::thPotentials& p) { return p.dissipated; })
+      .method("entropy", [](const muesli::thPotentials& p) { return p.entropy; })
+      .method("freeEnergy", [](const muesli::thPotentials& p) { return p.freeEnergy; })
+      .method("freeEntropy", [](const muesli::thPotentials& p) { return p.freeEntropy; })
+      .method("internalEnergy", [](const muesli::thPotentials& p) { return p.internalEnergy; })
+      .method("kineticPotential", [](const muesli::thPotentials& p) { return p.kineticPotential; })
+      .method("minimizing", [](const muesli::thPotentials& p) { return p.minimizing; })
+      .method("volumetric", [](const muesli::thPotentials& p) { return p.volumetric; });
+
   mod.add_type<smallStrainMP>("SmallStrainMP", jlcxx::julia_base_type<muesli::materialPoint>())
       // 3D response
       .method("contractWithDeviatoricTangent!", [](const smallStrainMP& mp, const ivector& v1, const ivector& v2,
@@ -28,7 +40,12 @@ void registerSmallStrainBase(jlcxx::Module& mod) {
       .method("plasticSlip", [](const smallStrainMP& mp) { return mp.plasticSlip(); })
       .method("shearStiffness", [](const smallStrainMP& mp) { return mp.shearStiffness(); })
       .method("tangentTensor!", [](const smallStrainMP& mp, itensor4& C) { mp.tangentTensor(C); })
-      // TODO: tangentMatrix (fills a C-style double[6][6])
+      .method("tangentMatrix!",
+              [](const smallStrainMP& mp, JuliaTensor out) {
+                double C[6][6];
+                mp.tangentMatrix(C);
+                jlmuesli::matrix6ToColumnMajor(C, jlmuesli::checkedMatrix6Data(out));
+              })
       .method("volumetricStiffness", [](const smallStrainMP& mp) { return mp.volumetricStiffness(); })
 
       // Energy
@@ -37,7 +54,7 @@ void registerSmallStrainBase(jlcxx::Module& mod) {
       .method("effectiveStoredEnergy", [](const smallStrainMP& mp) { return mp.effectiveStoredEnergy(); })
       .method("kineticPotential", [](const smallStrainMP& mp) { return mp.kineticPotential(); })
       .method("storedEnergy", [](const smallStrainMP& mp) { return mp.storedEnergy(); })
-      // TODO: thermodynamicPotentials (returns muesli::thPotentials)
+      .method("thermodynamicPotentials", [](const smallStrainMP& mp) { return mp.thermodynamicPotentials(); })
       .method("volumetricEnergy", [](const smallStrainMP& mp) { return mp.volumetricEnergy(); })
 
       // Stresses

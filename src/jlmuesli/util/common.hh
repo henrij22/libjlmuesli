@@ -78,6 +78,10 @@ inline const double* checkedData(const JuliaTensor4& T) {
   detail::requireShape<4>(T, {3, 3, 3, 3});
   return T.data();
 }
+inline double* checkedMatrix6Data(JuliaTensor& m) {
+  detail::requireShape<2>(m, {6, 6});
+  return m.data();
+}
 inline double* checkedData(JuliaVector& v) {
   detail::requireShape<1>(v, {kVectorSize});
   return v.data();

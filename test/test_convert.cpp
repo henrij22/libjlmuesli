@@ -141,3 +141,17 @@ TEST_CASE("assignFromColumnMajor overwrites in place") {
     CHECK(s(1, 2) == doctest::Approx(s(2, 1)));
   }
 }
+
+TEST_CASE("matrix6ToColumnMajor keeps the (row, column) meaning") {
+  double C[6][6];
+  for (int i = 0; i < 6; ++i)
+    for (int j = 0; j < 6; ++j)
+      C[i][j] = 10.0 * (i + 1) + (j + 1);
+
+  std::array<double, 36> out{};
+  matrix6ToColumnMajor(C, out.data());
+
+  // Julia's M[2, 5] is C[1][4]
+  CHECK(out[1 + 6 * 4] == doctest::Approx(25.0));
+  CHECK(out[4 + 6 * 1] == doctest::Approx(52.0));
+}

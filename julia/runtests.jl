@@ -550,4 +550,60 @@ const λ, μ = lame(E, ν)
             end
         end
     end
+
+    @testset "Small strain: Voigt tangent matrix" begin
+        mp = M.ElasticIsotropicMP(M.ElasticIsotropicMaterial(E, ν))
+        M.updateCurrentState(mp, 1.0, M.Istensor(zeros(3, 3)))
+
+        Cm = zeros(6, 6)
+        M.tangentMatrix!(mp, Cm)
+
+        # order 11, 22, 33, 23, 13, 12; the matrix acts on engineering shear strains
+        expected = zeros(6, 6)
+        for i in 1:3, j in 1:3
+            expected[i, j] = i == j ? λ + 2μ : λ
+        end
+        for i in 4:6
+            expected[i, i] = μ
+        end
+        @test Cm ≈ expected rtol = 1e-10
+
+        @testset "agrees with the fourth-order tangent" begin
+            C = M.Itensor4()
+            M.tangentTensor!(mp, C)
+            pairs = ((1, 1), (2, 2), (3, 3), (2, 3), (1, 3), (1, 2))
+            for (a, (i, j)) in enumerate(pairs), (b, (k, l)) in enumerate(pairs)
+                @test Cm[a, b] ≈ el(C, i, j, k, l) rtol = 1e-10
+            end
+        end
+
+        @test_throws Exception M.tangentMatrix!(mp, zeros(3, 3))
+    end
+
+    @testset "Small strain: thermodynamic potentials" begin
+        mp = M.ElasticIsotropicMP(M.ElasticIsotropicMaterial(E, ν))
+        ε = [0.001 0.0002 0.0; 0.0002 -0.0005 0.0001; 0.0 0.0001 0.0003]
+        M.updateCurrentState(mp, 1.0, M.Istensor(ε))
+
+        tp = M.thermodynamicPotentials(mp)
+        @test M.volumetric(tp) ≈ M.volumetricEnergy(mp) rtol = 1e-10
+        @test M.deviatoric(tp) ≈ M.deviatoricEnergy(mp) rtol = 1e-10
+        @test M.internalEnergy(tp) ≈ M.storedEnergy(mp) rtol = 1e-10
+    end
+
+    @testset "Finite strain: all tangent contractions at once" begin
+        mp = M.NeoHookeMP(M.NeoHookeMaterial(E, ν))
+        M.updateCurrentState(mp, 1.0, M.Itensor([1.05 0.02 0.0; 0.0 0.98 0.01; 0.0 0.0 1.01]))
+        v1, v2 = M.Ivector([1.0, 0.5, -0.3]), M.Ivector([0.2, -1.0, 0.7])
+
+        Tdev, Tmixed = M.Itensor(), M.Istensor()
+        Tvol = M.contractWithAllTangents!(mp, v1, v2, Tdev, Tmixed)
+
+        Tdev_ref, Tmixed_ref = M.Itensor(), M.Istensor()
+        M.contractWithDeviatoricTangent!(mp, v1, v2, Tdev_ref)
+        M.contractWithMixedTangent!(mp, Tmixed_ref)
+        @test mat3(Tdev) ≈ mat3(Tdev_ref)
+        @test mat3(Tmixed) ≈ mat3(Tmixed_ref)
+        @test Tvol ≈ M.volumetricStiffness(mp)
+    end
 end

@@ -49,7 +49,12 @@ void registerFiniteStrainBase(jlcxx::Module& mod) {
       .method("spatialTangent!", [](const finiteStrainMP& mp, itensor4& c) { mp.spatialTangent(c); })
 
       // --- Tangent contractions ---
-      // TODO: contractWithAllTangents (fills Tdev, Tmixed and a scalar Tvol by reference)
+      .method("contractWithAllTangents!",
+              [](const finiteStrainMP& mp, const ivector& v1, const ivector& v2, itensor& Tdev, istensor& Tmixed) {
+                double Tvol = 0.0;
+                mp.contractWithAllTangents(v1, v2, Tdev, Tmixed, Tvol);
+                return Tvol;
+              })
       .method("contractWithConvectedTangent!", [](const finiteStrainMP& mp, const ivector& v1, const ivector& v2,
                                                   itensor& T) { mp.contractWithConvectedTangent(v1, v2, T); })
       .method("contractWithSpatialTangent!", [](const finiteStrainMP& mp, const ivector& v1, const ivector& v2,
@@ -76,7 +81,6 @@ void registerFiniteStrainBase(jlcxx::Module& mod) {
       // --- Miscellaneous ---
       .method("plasticSlip", [](const finiteStrainMP& mp) { return mp.plasticSlip(); })
       .method("waveVelocity", [](const finiteStrainMP& mp) { return mp.waveVelocity(); })
-      // TODO: parentMaterial (returns a const finiteStrainMaterial&)
       .method("getDamage", [](const finiteStrainMP& mp) { return mp.getDamage(); })
       .method("isFullyDamaged", [](const finiteStrainMP& mp) { return mp.isFullyDamaged(); });
 }
