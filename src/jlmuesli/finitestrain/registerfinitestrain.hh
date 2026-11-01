@@ -35,7 +35,7 @@ std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> addFi
                 .constructor([](const Material& m) { return new MaterialPoint(m); });
 
   // Must follow the MP registration, since a method cannot return a type that does not exist yet.
-  mat.method("createMaterialPoint", [](const Material& m) { return jlcxx::create<MaterialPoint>(m); });
+  mat.method("cxxCreateMaterialPoint", [](const Material& m) { return jlcxx::create<MaterialPoint>(m); });
 
   return std::make_pair(mat, mp);
 }

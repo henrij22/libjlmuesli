@@ -35,7 +35,8 @@ std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> addSm
 
   // Not muesli's createMaterialPoint: that returns a raw base pointer Julia would never free.
   // Must follow the MP registration, since a method cannot return a type that does not exist yet.
-  mat.method("createMaterialPoint", [](const Material& m) { return jlcxx::create<MaterialPoint>(m); });
+  // The cxx prefix marks it as raw: MuesliMaterials.jl wraps it to keep the material alive.
+  mat.method("cxxCreateMaterialPoint", [](const Material& m) { return jlcxx::create<MaterialPoint>(m); });
 
   return std::make_pair(mat, mp);
 }

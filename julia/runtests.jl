@@ -261,7 +261,7 @@ const λ, μ = lame(E, ν)
             ortho = M.ElasticOrthotropicMaterial(c9, 1.0)
 
             @test M.check(ortho) isa Bool                     # registered on the material
-            @test M.createMaterialPoint(ortho) !== nothing
+            @test M.cxxCreateMaterialPoint(ortho) !== nothing
 
             mp = M.ElasticOrthotropicMP(ortho)
             M.updateCurrentState(mp, 1.0, M.Istensor([0.001 0.0 0.0; 0.0 0.0 0.0; 0.0 0.0 0.0]))
@@ -514,11 +514,11 @@ const λ, μ = lame(E, ν)
     end
 
     @testset "createMaterialPoint returns the concrete point type" begin
-        @test M.createMaterialPoint(M.ElasticIsotropicMaterial(E, ν)) isa M.ElasticIsotropicMP
-        @test M.createMaterialPoint(M.NeoHookeMaterial(E, ν)) isa M.NeoHookeMP
-        @test M.createMaterialPoint(M.SVKMaterial(E, ν)) isa M.SVKMP
+        @test M.cxxCreateMaterialPoint(M.ElasticIsotropicMaterial(E, ν)) isa M.ElasticIsotropicMP
+        @test M.cxxCreateMaterialPoint(M.NeoHookeMaterial(E, ν)) isa M.NeoHookeMP
+        @test M.cxxCreateMaterialPoint(M.SVKMaterial(E, ν)) isa M.SVKMP
 
-        mp = M.createMaterialPoint(M.ElasticIsotropicMaterial(E, ν))
+        mp = M.cxxCreateMaterialPoint(M.ElasticIsotropicMaterial(E, ν))
         ε = [0.001 0.0 0.0; 0.0 0.0 0.0; 0.0 0.0 0.0]
         M.updateCurrentState(mp, 1.0, M.Istensor(ε))
         σ = M.Istensor()
@@ -531,7 +531,7 @@ const λ, μ = lame(E, ν)
             for mat in (M.ElasticIsotropicMaterial(E, ν),
                         M.SplasticMaterial(E, ν, 1.0, 0.0, 0.0, 200.0, 0.0, "mises"),
                         M.ViscoelasticMaterial(E, ν, 1.0, 1, [1.0], [1.0]))
-                mp = M.createMaterialPoint(mat)
+                mp = M.cxxCreateMaterialPoint(mat)
                 M.updateCurrentState(mp, 1.0, M.Istensor(zeros(3, 3)))
                 M.commitCurrentState(mp)
                 @test M.storedEnergy(mp) ≈ 0.0 atol = 1e-12
@@ -542,7 +542,7 @@ const λ, μ = lame(E, ν)
         @testset "finite strain" begin
             F = [1.02 0.01 0.0; 0.0 0.99 0.0; 0.0 0.0 1.0]
             for mat in (M.NeoHookeMaterial(E, ν), M.SVKMaterial(E, ν))
-                mp = M.createMaterialPoint(mat)
+                mp = M.cxxCreateMaterialPoint(mat)
                 M.updateCurrentState(mp, 1.0, M.Itensor(F))
                 M.commitCurrentState(mp)
                 @test mat3(M.convergedDeformationGradient(mp)) ≈ F

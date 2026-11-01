@@ -223,6 +223,11 @@ family is registered once on its root in `smallstrainbindings.cpp` / `finitestra
 and what every material has in common in `util/materialbase.cpp`; a material only repeats a
 method when its signature differs (a history-carrying `setConvergedState`, for example).
 
+A material point only holds a C++ reference to its material, so it must not outlive it. The raw
+`...MP(material)` constructors and `cxxCreateMaterialPoint` do nothing to prevent that;
+MuesliMaterials.jl wraps them and keeps the material alive. The bindings are not meant to be used
+without that package.
+
 To move a tensor to or from Julia, prefer the bulk methods `toArray!` and `fromArray!` over
 `cxxgetindex`: one call per tensor instead of one per element.
 
