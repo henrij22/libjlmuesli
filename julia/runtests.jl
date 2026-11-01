@@ -469,7 +469,7 @@ const λ, μ = lame(E, ν)
             catch e
                 e
             end
-            @test occursin("3x3", sprint(showerror, err))
+            @test occursin("size 3x3", sprint(showerror, err))
         end
     end
 

@@ -60,7 +60,7 @@ namespace detail {
 #endif
 
     if (!ok)
-      throw std::invalid_argument("Input has to be a " + shapeString(expected) + " array, got " +
+      throw std::invalid_argument("Input has to be an array of size " + shapeString(expected) + ", got " +
                                   std::to_string(array.size()) + " element(s).");
   }
 
