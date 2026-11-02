@@ -12,6 +12,9 @@
 #include <jlcxx/jlcxx.hpp>
 #include <jlcxx/type_conversion.hpp>
 
+// reducedbindings.cpp
+void registerReducedModels(jlcxx::Module& mod);
+
 JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
   using jlcxx::arg;
   using jlcxx::julia_base_type;
@@ -31,4 +34,5 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
 
   registerSmallStrainMaterials(mod);
   registerFiniteStrainMaterials(mod);
+  registerReducedModels(mod);
 }
