@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include <muesli/muesli.h>
-
 #include <string>
+
+#include <muesli/muesli.h>
 
 #include <jlcxx/jlcxx.hpp>
 
@@ -24,8 +24,20 @@ inline std::string muesliMaterialName(const std::string& wrapperName) {
   return name;
 }
 
+// A DLL exports only what is marked once any symbol is (jlcxx marks its entry point), and the C++
+// tests link against this library.
+#if defined(_WIN32)
+  #if defined(jlmuesli_EXPORTS)
+    #define JLMUESLI_API __declspec(dllexport)
+  #else
+    #define JLMUESLI_API __declspec(dllimport)
+  #endif
+#else
+  #define JLMUESLI_API
+#endif
+
 // helpers.cpp
-struct MultiMapWrapper
+struct JLMUESLI_API MultiMapWrapper
 {
   // Insert a (key, value) pair into the multimap
   void set(const std::string& key, double value);
