@@ -57,5 +57,15 @@ set_target_properties(
   jlmuesli_tests PROPERTIES BUILD_RPATH "${_jlmuesli_julia_libdir};${JlCxx_location}"
 )
 
-# Registers each TEST_CASE with CTest individually, so a failure names the case.
-doctest_discover_tests(jlmuesli_tests)
+if(WIN32)
+  # doctest_discover_tests runs the executable at the end of the build, with the same PATH as
+  # the compiler. The compiler needs MSYS2's DLLs first on PATH and libjulia needs the ones
+  # next to Julia, so register one test and give only that process Julia's directory first.
+  add_test(NAME jlmuesli_tests COMMAND jlmuesli_tests)
+  set_tests_properties(
+    jlmuesli_tests PROPERTIES ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${Julia_LIBRARY_DIR}"
+  )
+else()
+  # Registers each TEST_CASE with CTest individually, so a failure names the case.
+  doctest_discover_tests(jlmuesli_tests)
+endif()

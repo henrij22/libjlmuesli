@@ -9,9 +9,7 @@ case "$RUNNER_OS" in
     workspace=$(cygpath -u "$GITHUB_WORKSPACE")
     muesli=$(cygpath -u "$MUESLI_PREFIX")
     cxxwrap=$(cygpath -u "$1")
-    # Julia's own bin must come first: its DLLs (libjulia-codegen, ...) are built against the
-    # runtime DLLs next to them, and MSYS2's newer copies earlier on PATH do not match
-    julia=$(cygpath -u "$(julia --startup-file=no -e 'print(Sys.BINDIR)')")
-    export PATH="$julia:$muesli/bin:$workspace/build/lib:$cxxwrap/bin:$cxxwrap/lib:$PATH"
+    # appended: the compiler and ctest need MSYS2's own DLLs to win over any in these directories
+    export PATH="$PATH:$muesli/bin:$workspace/build/lib:$cxxwrap/bin:$cxxwrap/lib"
     ;;
 esac
