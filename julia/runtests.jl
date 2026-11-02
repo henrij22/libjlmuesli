@@ -846,4 +846,22 @@ const λ, μ = lame(E, ν)
             end
         end
     end
+
+    @testset "Viscoplasticity takes Young's modulus and Poisson's ratio" begin
+        E, ν = 210e3, 0.3
+        mat = M.ViscoplasticMaterial(E, ν, 7.8e-9, 1000.0, 0.0, 300.0, "mises", 1.0, 0.0)
+        @test M.check(mat)
+        @test M.density(mat) ≈ 7.8e-9
+
+        mp = M.ViscoplasticMP(mat)
+        ε = 1e-4
+        M.updateCurrentState(mp, 1.0, M.Istensor([ε 0.0 0.0; 0.0 -ν * ε 0.0; 0.0 0.0 -ν * ε]))
+        σ = M.Istensor()
+        M.stress!(mp, σ)
+        @test mat3(σ)[1, 1] ≈ E * ε rtol = 1e-8
+        @test M.plasticSlip(mp) == 0
+
+        @test M.check(M.ViscoplasticMaterial(E, ν, 7.8e-9, 1000.0, 0.0, 300.0, "tresca", 1.0, 0.0))
+        !Sys.isapple() && @test_throws Exception M.ViscoplasticMaterial(E, ν, 1.0, 0.0, 0.0, 300.0, "drucker", 1.0, 0.0)
+    end
 end
