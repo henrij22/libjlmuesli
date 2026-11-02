@@ -8,6 +8,8 @@ find_package(doctest QUIET)
 
 if(NOT doctest_FOUND)
   message(STATUS "doctest not found, fetching it")
+  # doctest 2.4.11 declares a cmake_minimum_required below 3.5, which CMake 4 rejects
+  set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
   FetchContent_Declare(
     doctest
     GIT_REPOSITORY https://github.com/doctest/doctest.git
