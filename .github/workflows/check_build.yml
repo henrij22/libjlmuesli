@@ -56,6 +56,8 @@ jobs:
             prefix: C:/muesli-install
             generator: Ninja
             blas: -DBLA_VENDOR=OpenBLAS
+            # Julia ships its own, older MinGW runtime, and this library is loaded next to it
+            linker: -static-libstdc++ -static-libgcc
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -65,7 +67,7 @@ jobs:
         id: muesli-cache
         with:
           path: ${{ matrix.prefix }}
-          key: muesli-${{ env.MUESLI_COMMIT }}-${{ runner.os }}-${{ hashFiles('patches/cmakesupport.patch') }}
+          key: muesli-${{ env.MUESLI_COMMIT }}-${{ runner.os }}-${{ hashFiles('patches/cmakesupport.patch', '.github/workflows/check_build.yml') }}
 
       - name: Set up the toolchain
         if: steps.muesli-cache.outputs.cache-hit != 'true'
@@ -87,10 +89,13 @@ jobs:
 
       - name: Build and install MUESLI
         if: steps.muesli-cache.outputs.cache-hit != 'true'
+        env:
+          LINKER_FLAGS: ${{ matrix.linker }}
         run: |
           cd /tmp/muesli-src
           cmake -B builddir -G "${{ matrix.generator }}" \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_SHARED_LINKER_FLAGS="${LINKER_FLAGS}" \
             -DCMAKE_INSTALL_PREFIX="${MUESLI_PREFIX}" \
             -DCMAKE_CXX_FLAGS="-I$(bash "${GITHUB_WORKSPACE}/.github/scripts/eigen-include.sh")" \
             ${{ matrix.blas }}
@@ -144,7 +149,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ matrix.prefix }}
-          key: muesli-${{ env.MUESLI_COMMIT }}-${{ runner.os }}-${{ hashFiles('patches/cmakesupport.patch') }}
+          key: muesli-${{ env.MUESLI_COMMIT }}-${{ runner.os }}-${{ hashFiles('patches/cmakesupport.patch', '.github/workflows/check_build.yml') }}
           fail-on-cache-miss: true
 
       - name: Set up Julia ${{ matrix.julia-version }}
@@ -184,6 +189,13 @@ jobs:
             -DJulia_LIBRARY="${{ steps.julia-paths.outputs.julialib }}" \
             -DCMAKE_CXX_FLAGS="-I$(bash .github/scripts/eigen-include.sh)"
           cmake --build build --parallel 4
+
+      - name: DLL dependencies
+        if: always() && runner.os == 'Windows'
+        run: |
+          for dll in build/lib/libjlmuesli.dll "${MUESLI_PREFIX}/bin/libmuesli.dll"; do
+            echo "== $dll"; objdump -p "$dll" | grep "DLL Name" || true
+          done
 
       - name: C++ unit tests
         working-directory: build
