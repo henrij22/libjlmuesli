@@ -47,6 +47,7 @@ the Julia side feel native:
 | `src/jlmuesli/util/` | tensors, material properties, material state, property names |
 | `src/jlmuesli/smallstrain/` | small-strain materials: elastic, plastic, viscous, damage |
 | `src/jlmuesli/finitestrain/` | finite-strain materials: hyperelastic and finite plasticity |
+| `src/jlmuesli/reduced/` | reduced models: bar, beam, shell and plane stress on top of a 3D point |
 | `test/` | C++ unit tests (doctest + CTest) |
 | `patches/` | `cmakesupport.patch`, which adds a CMake project to MUESLI |
 | `julia/` | Julia integration suite run against the freshly built library |
@@ -214,6 +215,37 @@ Other notes:
   path from your machine.
 - Delete it once the JLL is released with your changes, so the environment goes back to the
   published binary.
+
+## Reduced models
+
+A reduced point wraps a 3D material point for an element that only controls part of the strain: the
+caller prescribes the *master* strain components, the model solves for the remaining ones so that
+their stress is zero, and the tangent is condensed statically onto the master block,
+`C* = C_mm - C_mz C_zz⁻¹ C_zm`. Formulation and references are in MUESLI's `reducedsmallstrain.cpp`
+and `reducedfinitestrain.cpp`.
+
+| Small strain | Finite strain | Master components | Zero stress | Use |
+| :-- | :-- | :-- | :-- | :-- |
+| `SbarMP` | `FbarMP` | 11 | 22, 33, 23, 13, 12 | uniaxial stress |
+| `SbeamMP` | `FbeamMP` | 33, 23, 13 | 11, 22, 12 | beam along axis 3 |
+| `SshellMP` | `FshellMP` | 11, 22, 23, 13, 12 | 33 | shell, plane stress with transverse shear |
+| `SplaneMP` | `FplaneMP` | 11, 22, 12 | 33, 23, 13 | plane stress |
+
+- The finite-strain models work in the Green-Lagrange strain `E = (FᵀF - I)/2` and its work-conjugate
+  second Piola-Kirchhoff stress, the small-strain ones in the strain and the Cauchy stress.
+- `Reduced…MP(point)` takes the 3D point; `Reduced…MP(point, "nlcg")` selects the nonlinear conjugate
+  gradient solver instead of Newton-Raphson, which is more robust for plasticity.
+- `updateCurrentState!(mp, t, ε)` (small) and `updateCurrentState!(mp, t, F)` (finite) **overwrite the
+  argument** with the full 3D strain or deformation gradient, including the solved components.
+- `tangentMatrix!` (small) and `convectedTangentMatrix!` (finite) fill a 6×6 matrix in Voigt order
+  `[11, 22, 33, 23, 13, 12]` with the *engineering* tangent, `dS = C dE` with `γ = 2ε` for the shears.
+  Only the master block is non-zero.
+- The reduced point keeps a pointer to the 3D point, which must outlive it (MuesliMaterials.jl
+  ensures this). The shared interface is on `ReducedSmallStrainMP` and `ReducedFiniteStrainMP`.
+- The `SuperType` entries point straight at the root: the intermediate `reduced1z/3z/5z` classes are
+  not bound, and `static_cast` reaches the root through them.
+- MUESLI prints `Error in back linesearch` from its nonlinear conjugate gradient solver when the
+  problem is already quadratic, as it is for linear elasticity. The result is correct.
 
 ## Working on the bindings
 

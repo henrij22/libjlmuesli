@@ -18,6 +18,7 @@ set(JLMUESLI_SOURCES
     ${JLMUESLI_SOURCE_DIR}/util/propertynames.cpp
     ${JLMUESLI_SOURCE_DIR}/finitestrain/finitestrainbindings.cpp
     ${JLMUESLI_SOURCE_DIR}/smallstrain/smallstrainbindings.cpp
+    ${JLMUESLI_SOURCE_DIR}/reduced/reducedbindings.cpp
 )
 
 set_target_properties(${JLCXX_TARGET} PROPERTIES PUBLIC_HEADER "${JLMUESLI_HEADERS}")

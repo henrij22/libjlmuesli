@@ -22,8 +22,10 @@
 #include <muesli/Finitestrain/fplastic.h>
 #include <muesli/Finitestrain/johnsoncook.h>
 #include <muesli/Finitestrain/mooney.h>
+#include <muesli/Finitestrain/reducedfinitestrain.h>
 #include <muesli/Finitestrain/zerilliarmstrong.h>
 #include <muesli/muesli.h>
+#include <muesli/Smallstrain/reducedsmallstrain.h>
 #include <muesli/Smallstrain/sdamage.h>
 #include <muesli/Smallstrain/viscoplasticnl.h>
 
@@ -118,6 +120,18 @@ JLMUESLI_SUPERTYPE(muesli::johnsonCookMP, muesli::finiteStrainMP);
 
 JLMUESLI_SUPERTYPE(muesli::zerilliArmstrongMaterial, muesli::finiteStrainMaterial);
 JLMUESLI_SUPERTYPE(muesli::zerilliArmstrongMP, muesli::finiteStrainMP);
+
+// --- reduced models ----------------------------------------------------------------
+// The intermediate reduced1z/3z/5z classes are not bound; static_cast reaches the root through them.
+JLMUESLI_SUPERTYPE(muesli::sbarMP, muesli::rSmallStrainMP);
+JLMUESLI_SUPERTYPE(muesli::sbeamMP, muesli::rSmallStrainMP);
+JLMUESLI_SUPERTYPE(muesli::sshellMP, muesli::rSmallStrainMP);
+JLMUESLI_SUPERTYPE(muesli::splaneMP, muesli::rSmallStrainMP);
+
+JLMUESLI_SUPERTYPE(muesli::fbarMP, muesli::rFiniteStrainMP);
+JLMUESLI_SUPERTYPE(muesli::fbeamMP, muesli::rFiniteStrainMP);
+JLMUESLI_SUPERTYPE(muesli::fshellMP, muesli::rFiniteStrainMP);
+JLMUESLI_SUPERTYPE(muesli::fplaneMP, muesli::rFiniteStrainMP);
 
 } // namespace jlcxx
 
