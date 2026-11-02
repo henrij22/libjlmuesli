@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2025 Henrik Jakob jakob@ibb.uni-stuttgart.de
+# SPDX-License-Identifier: MIT
+
+name: Set up the C++ toolchain
+description: Install a compiler, CMake, Eigen and BLAS/LAPACK for the current runner
+
+runs:
+  using: composite
+  steps:
+    - name: Linux packages
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake git libeigen3-dev libopenblas-dev liblapack-dev
+
+    # BLAS and LAPACK come from the Accelerate framework, CMake and Ninja are preinstalled
+    - name: macOS packages
+      if: runner.os == 'macOS'
+      shell: bash
+      run: brew install eigen
+
+    # Julia's libcxxwrap-julia is a MinGW build on Windows, so everything has to be too
+    - name: Windows packages
+      if: runner.os == 'Windows'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        path-type: inherit
+        install: >-
+          git
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-ninja
+          mingw-w64-x86_64-eigen3
+          mingw-w64-x86_64-openblas

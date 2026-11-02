@@ -8,6 +8,8 @@ find_package(doctest QUIET)
 
 if(NOT doctest_FOUND)
   message(STATUS "doctest not found, fetching it")
+  # doctest 2.4.11 declares a cmake_minimum_required below 3.5, which CMake 4 rejects
+  set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
   FetchContent_Declare(
     doctest
     GIT_REPOSITORY https://github.com/doctest/doctest.git
@@ -45,6 +47,9 @@ add_executable(jlmuesli_tests test_helpers.cpp test_convert.cpp)
 target_link_libraries(jlmuesli_tests PRIVATE jlmuesli doctest::doctest "${Julia_LIBRARY}")
 target_include_directories(jlmuesli_tests PRIVATE "${CMAKE_SOURCE_DIR}/src")
 target_compile_features(jlmuesli_tests PRIVATE cxx_std_17)
+if(MINGW)
+  target_link_options(jlmuesli_tests PRIVATE -static-libstdc++)
+endif()
 
 # so the loader finds libjulia and libcxxwrap_julia when ctest runs the binary
 get_filename_component(_jlmuesli_julia_libdir "${Julia_LIBRARY}" DIRECTORY)
@@ -52,5 +57,15 @@ set_target_properties(
   jlmuesli_tests PROPERTIES BUILD_RPATH "${_jlmuesli_julia_libdir};${JlCxx_location}"
 )
 
-# Registers each TEST_CASE with CTest individually, so a failure names the case.
-doctest_discover_tests(jlmuesli_tests)
+if(WIN32)
+  # doctest_discover_tests runs the executable at the end of the build, with the same PATH as
+  # the compiler. The compiler needs MSYS2's DLLs first on PATH and libjulia needs the ones
+  # next to Julia, so register one test and give only that process Julia's directory first.
+  add_test(NAME jlmuesli_tests COMMAND jlmuesli_tests)
+  set_tests_properties(
+    jlmuesli_tests PROPERTIES ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${Julia_LIBRARY_DIR}"
+  )
+else()
+  # Registers each TEST_CASE with CTest individually, so a failure names the case.
+  doctest_discover_tests(jlmuesli_tests)
+endif()

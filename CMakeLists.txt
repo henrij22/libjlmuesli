@@ -10,6 +10,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_MACOSX_RPATH 1)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+if(WIN32)
+  # A DLL is a RUNTIME artefact. Put it next to where the other platforms put their library, so
+  # the Julia tests find it there and the test executable finds it as a neighbour.
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+endif()
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 find_package(JlCxx REQUIRED)

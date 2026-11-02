@@ -1,0 +1,2 @@
+# the patch is applied with git apply, which does not tolerate CRLF
+patches/*.patch text eol=lf

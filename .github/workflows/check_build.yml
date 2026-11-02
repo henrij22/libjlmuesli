@@ -29,8 +29,36 @@ env:
 
 jobs:
   build-muesli:
-    name: Build MUESLI
-    runs-on: ubuntu-latest
+    name: Build MUESLI (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    env:
+      MUESLI_PREFIX: ${{ matrix.prefix }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            runner: ubuntu-latest
+            shell: bash
+            prefix: /tmp/muesli-install
+            generator: Unix Makefiles
+          - name: macOS
+            runner: macos-latest
+            shell: bash
+            prefix: /tmp/muesli-install
+            generator: Unix Makefiles
+          - name: Windows
+            runner: windows-latest
+            shell: msys2 {0}
+            prefix: C:/muesli-install
+            generator: Ninja
+            blas: -DBLA_VENDOR=OpenBLAS
+            # Julia ships its own, older libstdc++, and this library is loaded next to it. Not
+            # -static-libgcc: its unwinder symbols would be exported and clash when linking.
+            linker: -static-libstdc++
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -39,25 +67,17 @@ jobs:
         uses: actions/cache@v6
         id: muesli-cache
         with:
-          path: /tmp/muesli-install
-          key: muesli-${{ env.MUESLI_COMMIT }}-${{ runner.os }}
+          path: ${{ matrix.prefix }}
+          key: muesli-${{ env.MUESLI_COMMIT }}-${{ runner.os }}-${{ hashFiles('patches/cmakesupport.patch', '.github/workflows/check_build.yml') }}
 
-      - name: Install system dependencies
+      - name: Set up the toolchain
         if: steps.muesli-cache.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            cmake \
-            git \
-            libeigen3-dev \
-            libopenblas-dev \
-            liblapack-dev
+        uses: ./.github/actions/setup-toolchain
 
       - name: Clone MUESLI at the pinned commit
         if: steps.muesli-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://gitlab.com/ignacio.romero/muesli.git /tmp/muesli-src
+          git -c core.autocrlf=false clone https://gitlab.com/ignacio.romero/muesli.git /tmp/muesli-src
           cd /tmp/muesli-src
           git checkout "${MUESLI_COMMIT}"
 
@@ -70,45 +90,65 @@ jobs:
 
       - name: Build and install MUESLI
         if: steps.muesli-cache.outputs.cache-hit != 'true'
+        env:
+          LINKER_FLAGS: ${{ matrix.linker }}
         run: |
           cd /tmp/muesli-src
-          cmake -B builddir \
+          cmake -B builddir -G "${{ matrix.generator }}" \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/tmp/muesli-install \
-            -DCMAKE_CXX_FLAGS="-I/usr/include/eigen3"
+            -DCMAKE_SHARED_LINKER_FLAGS="${LINKER_FLAGS}" \
+            -DCMAKE_INSTALL_PREFIX="${MUESLI_PREFIX}" \
+            -DCMAKE_CXX_FLAGS="-I$(bash "${GITHUB_WORKSPACE}/.github/scripts/eigen-include.sh")" \
+            ${{ matrix.blas }}
           cmake --build builddir --parallel 4
           cmake --install builddir
 
   test:
-    name: Julia ${{ matrix.julia-version }}
+    name: Julia ${{ matrix.julia-version }} (${{ matrix.os }})
     needs: build-muesli
-    runs-on: ubuntu-latest
-    # 'pre' is whatever Julia is currently in prerelease; it may break for reasons outside this repo
-    continue-on-error: ${{ matrix.julia-version == 'pre' }}
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    env:
+      MUESLI_PREFIX: ${{ matrix.prefix }}
+    permissions: # lets julia-actions/cache delete the old caches it created
+      actions: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
-        julia-version: ['1.11', '1.12', '1.13', 'pre']
+        os: [Linux, macOS, Windows]
+        julia-version: ['1.11', '1.12', '1.13']
+        include:
+          - os: Linux
+            runner: ubuntu-latest
+            shell: bash
+            prefix: /tmp/muesli-install
+            generator: Unix Makefiles
+          - os: macOS
+            runner: macos-latest
+            shell: bash
+            prefix: /tmp/muesli-install
+            generator: Unix Makefiles
+          - os: Windows
+            runner: windows-latest
+            shell: msys2 {0}
+            prefix: C:/muesli-install
+            generator: Ninja
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            cmake \
-            libeigen3-dev \
-            libopenblas-dev \
-            liblapack-dev
+      - name: Set up the toolchain
+        uses: ./.github/actions/setup-toolchain
 
       - name: Restore MUESLI
         uses: actions/cache@v6
         with:
-          path: /tmp/muesli-install
-          key: muesli-${{ env.MUESLI_COMMIT }}-${{ runner.os }}
+          path: ${{ matrix.prefix }}
+          key: muesli-${{ env.MUESLI_COMMIT }}-${{ runner.os }}-${{ hashFiles('patches/cmakesupport.patch', '.github/workflows/check_build.yml') }}
           fail-on-cache-miss: true
 
       - name: Set up Julia ${{ matrix.julia-version }}
@@ -116,17 +156,23 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
 
+      - name: Cache Julia packages and artifacts
+        uses: julia-actions/cache@v3
+        with:
+          cache-registries: false
+
       - name: Install Julia dependencies
         run: julia --project=julia -e 'using Pkg; Pkg.instantiate()'
 
       - name: Locate libcxxwrap-julia and libjulia
         id: julia-paths
         run: |
-          CXXWRAP_PREFIX=$(julia --project=julia -e 'using CxxWrap; print(CxxWrap.prefix_path())')
+          # forward slashes: CMake treats a backslash as an escape
+          CXXWRAP_PREFIX=$(julia --project=julia -e 'using CxxWrap; print(replace(CxxWrap.prefix_path(), "\\" => "/"))')
           # The C++ tests link libjulia transitively through libcxxwrap_julia, and an
           # executable has to resolve those symbols at link time. Ask Julia for the path
           # rather than relying on CMake finding the executable on PATH.
-          JULIA_LIB=$(julia --startup-file=no -e 'using Libdl; print(abspath(Libdl.dlpath("libjulia")))')
+          JULIA_LIB=$(julia --startup-file=no -e 'using Libdl; print(replace(abspath(Libdl.dlpath("libjulia")), "\\" => "/"))')
           echo "cxxwrap=$CXXWRAP_PREFIX" >> $GITHUB_OUTPUT
           echo "julialib=$JULIA_LIB" >> $GITHUB_OUTPUT
           echo "libcxxwrap-julia: $CXXWRAP_PREFIX"
@@ -134,16 +180,17 @@ jobs:
 
       - name: Build libjlmuesli
         run: |
-          cmake -B build \
+          cmake -B build -G "${{ matrix.generator }}" \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="/tmp/muesli-install;${{ steps.julia-paths.outputs.cxxwrap }}" \
+            -DCMAKE_PREFIX_PATH="${MUESLI_PREFIX};${{ steps.julia-paths.outputs.cxxwrap }}" \
             -DJulia_LIBRARY="${{ steps.julia-paths.outputs.julialib }}" \
-            -DCMAKE_CXX_FLAGS="-I/usr/include/eigen3"
+            -DCMAKE_CXX_FLAGS="-I$(bash .github/scripts/eigen-include.sh)"
           cmake --build build --parallel 4
 
       - name: C++ unit tests
         working-directory: build
         run: |
+          source "${GITHUB_WORKSPACE}/.github/scripts/runtime-env.sh" "${{ steps.julia-paths.outputs.cxxwrap }}"
           # `ctest` on an empty test set would pass silently, and the tests are skipped when
           # Julia is not found -- make that a failure rather than a green tick.
           if [ "$(ctest --show-only=json-v1 | grep -c '"name"')" -eq 0 ]; then
@@ -153,6 +200,6 @@ jobs:
           ctest --output-on-failure
 
       - name: Julia integration tests
-        env:
-          LD_LIBRARY_PATH: /tmp/muesli-install/lib:${{ github.workspace }}/build/lib
-        run: julia --project=julia julia/runtests.jl "${GITHUB_WORKSPACE}/build/lib"
+        run: |
+          source .github/scripts/runtime-env.sh "${{ steps.julia-paths.outputs.cxxwrap }}"
+          julia --project=julia julia/runtests.jl "${GITHUB_WORKSPACE}/build/lib"
