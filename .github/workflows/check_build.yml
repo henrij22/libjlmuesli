@@ -112,8 +112,6 @@ jobs:
         shell: ${{ matrix.shell }}
     env:
       MUESLI_PREFIX: ${{ matrix.prefix }}
-    # 'pre' is whatever Julia is currently in prerelease; it may break for reasons outside this repo
-    continue-on-error: ${{ matrix.julia-version == 'pre' }}
     permissions: # lets julia-actions/cache delete the old caches it created
       actions: write
       contents: read
@@ -121,7 +119,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [Linux, macOS, Windows]
-        julia-version: ['1.11', '1.12', '1.13', 'pre']
+        julia-version: ['1.11', '1.12', '1.13']
         include:
           - os: Linux
             runner: ubuntu-latest
@@ -201,11 +199,7 @@ jobs:
           fi
           ctest --output-on-failure
 
-      # Loading the library into Julia fails on Windows with "The specified procedure could not be
-      # found", although every DLL of the chain loads on its own. Not understood, so only the
-      # build and the C++ tests cover Windows.
       - name: Julia integration tests
-        if: runner.os != 'Windows'
         run: |
           source .github/scripts/runtime-env.sh "${{ steps.julia-paths.outputs.cxxwrap }}"
           julia --project=julia julia/runtests.jl "${GITHUB_WORKSPACE}/build/lib"
