@@ -212,3 +212,9 @@ jobs:
         run: |
           source .github/scripts/runtime-env.sh "${{ steps.julia-paths.outputs.cxxwrap }}"
           julia --project=julia julia/runtests.jl "${GITHUB_WORKSPACE}/build/lib"
+
+      - name: Probe the DLL chain
+        if: failure() && runner.os == 'Windows'
+        run: |
+          source .github/scripts/runtime-env.sh "${{ steps.julia-paths.outputs.cxxwrap }}"
+          julia --project=julia .github/scripts/probe-dlls.jl libopenblas.dll libmuesli.dll libcxxwrap_julia.dll "${GITHUB_WORKSPACE}/build/lib/libjlmuesli.dll"
