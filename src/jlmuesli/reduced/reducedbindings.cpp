@@ -8,14 +8,14 @@
 // A reduced point only holds a pointer to the 3D point it wraps. That point must outlive it;
 // MuesliMaterials.jl takes care of this.
 
+#include <sstream>
+
 #include <jlmuesli/util/common.hh>
 #include <jlmuesli/util/utils.hh>
 
-#include <sstream>
-
 #include <muesli/Finitestrain/reducedfinitestrain.h>
-#include <muesli/Smallstrain/reducedsmallstrain.h>
 #include <muesli/muesli.h>
+#include <muesli/Smallstrain/reducedsmallstrain.h>
 
 #include <jlcxx/jlcxx.hpp>
 
@@ -26,8 +26,9 @@ using muesli::rSmallStrainMP;
 
 template <typename Reduced, typename ThreeD>
 void addReducedModel(jlcxx::Module& mod, const std::string& name) {
-  mod.add_type<Reduced>(name, jlcxx::julia_base_type<std::conditional_t<std::is_base_of_v<rSmallStrainMP, Reduced>,
-                                                                         rSmallStrainMP, rFiniteStrainMP>>())
+  mod.add_type<Reduced>(
+         name, jlcxx::julia_base_type<
+                   std::conditional_t<std::is_base_of_v<rSmallStrainMP, Reduced>, rSmallStrainMP, rFiniteStrainMP>>())
       .constructor([](ThreeD& mp) { return new Reduced(&mp); })
       .constructor([](ThreeD& mp, const std::string& method) { return new Reduced(&mp, method); });
 }
@@ -70,7 +71,8 @@ void registerReducedModels(jlcxx::Module& mod) {
       .method("commitCurrentState", [](rSmallStrainMP& mp) { mp.commitCurrentState(); })
       .method("resetCurrentState", [](rSmallStrainMP& mp) { mp.resetCurrentState(); })
       // overwrites `strain` with the full 3D strain, including the solved components
-      .method("updateCurrentState!", [](rSmallStrainMP& mp, double t, istensor& strain) { mp.updateCurrentState(t, strain); })
+      .method("updateCurrentState!",
+              [](rSmallStrainMP& mp, double t, istensor& strain) { mp.updateCurrentState(t, strain); })
       .method("getCurrentStrain", [](const rSmallStrainMP& mp) -> istensor { return mp.getCurrentStrain(); })
       .method("getConvergedPlasticStrain",
               [](const rSmallStrainMP& mp) -> istensor { return mp.getConvergedPlasticStrain(); })

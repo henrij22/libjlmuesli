@@ -22,9 +22,9 @@
 #include <muesli/Finitestrain/fplastic.h>
 #include <muesli/Finitestrain/johnsoncook.h>
 #include <muesli/Finitestrain/mooney.h>
+#include <muesli/Finitestrain/reducedfinitestrain.h>
 #include <muesli/Finitestrain/zerilliarmstrong.h>
 #include <muesli/muesli.h>
-#include <muesli/Finitestrain/reducedfinitestrain.h>
 #include <muesli/Smallstrain/reducedsmallstrain.h>
 #include <muesli/Smallstrain/sdamage.h>
 #include <muesli/Smallstrain/viscoplasticnl.h>
