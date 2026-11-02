@@ -69,6 +69,10 @@ void registerFiniteStrainBase(jlcxx::Module& mod) {
               })
       .method("volumetricStiffness", [](const finiteStrainMP& mp) { return mp.volumetricStiffness(); })
 
+      // --- Self test ---
+      .method("testImplementation",
+              [](const finiteStrainMP& mp, bool testDE, bool testDDE) { return runSelfTest(mp, testDE, testDDE); })
+
       // --- Bookkeeping (commit/reset/get*State are on MaterialPoint) ---
       .method("updateCurrentState",
               [](finiteStrainMP& mp, double theTime, const itensor& F) { mp.updateCurrentState(theTime, F); })

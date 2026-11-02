@@ -17,21 +17,23 @@
 // builds matches the real class hierarchy. They are collected here rather than scattered
 // across the registration files so the hierarchy can be checked against muesli in one place.
 
-#include <muesli/muesli.h>
-
 #include <muesli/Finitestrain/arrudaboyce.h>
 #include <muesli/Finitestrain/fisotropic.h>
 #include <muesli/Finitestrain/fplastic.h>
+#include <muesli/Finitestrain/johnsoncook.h>
 #include <muesli/Finitestrain/mooney.h>
+#include <muesli/Finitestrain/zerilliarmstrong.h>
+#include <muesli/muesli.h>
 #include <muesli/Smallstrain/sdamage.h>
+#include <muesli/Smallstrain/viscoplasticnl.h>
 
 #include <jlcxx/jlcxx.hpp>
 
-#define JLMUESLI_SUPERTYPE(Derived, Base)     \
-  template <>                                 \
-  struct SuperType<Derived>                   \
-  {                                           \
-    using type = Base;                        \
+#define JLMUESLI_SUPERTYPE(Derived, Base) \
+  template <>                             \
+  struct SuperType<Derived>               \
+  {                                       \
+    using type = Base;                    \
   }
 
 namespace jlcxx {
@@ -64,6 +66,9 @@ JLMUESLI_SUPERTYPE(muesli::viscoelasticMP, muesli::smallStrainMP);
 
 JLMUESLI_SUPERTYPE(muesli::viscoplasticMaterial, muesli::smallStrainMaterial);
 JLMUESLI_SUPERTYPE(muesli::viscoplasticMP, muesli::smallStrainMP);
+
+JLMUESLI_SUPERTYPE(muesli::viscoplasticnlMaterial, muesli::smallStrainMaterial);
+JLMUESLI_SUPERTYPE(muesli::viscoplasticnlMP, muesli::smallStrainMP);
 
 // --- small strain damage -----------------------------------------------------------
 JLMUESLI_SUPERTYPE(muesli::sdamageMaterial, muesli::smallStrainMaterial);
@@ -107,6 +112,12 @@ JLMUESLI_SUPERTYPE(muesli::svkMP, muesli::finiteStrainMP);
 
 JLMUESLI_SUPERTYPE(muesli::fplasticMaterial, muesli::finiteStrainMaterial);
 JLMUESLI_SUPERTYPE(muesli::fplasticMP, muesli::finiteStrainMP);
+
+JLMUESLI_SUPERTYPE(muesli::johnsonCookMaterial, muesli::finiteStrainMaterial);
+JLMUESLI_SUPERTYPE(muesli::johnsonCookMP, muesli::finiteStrainMP);
+
+JLMUESLI_SUPERTYPE(muesli::zerilliArmstrongMaterial, muesli::finiteStrainMaterial);
+JLMUESLI_SUPERTYPE(muesli::zerilliArmstrongMP, muesli::finiteStrainMP);
 
 } // namespace jlcxx
 

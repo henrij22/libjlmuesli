@@ -3,11 +3,40 @@
 
 #pragma once
 
+#include <iostream>
+#include <sstream>
 #include <string>
 
 #include <muesli/muesli.h>
 
 #include <jlcxx/jlcxx.hpp>
+
+/// MUESLI's own consistency check of a material point (stress against the derivative of the
+/// energy, tangent against the derivative of the stress). Its report is only printed on failure.
+template <typename MaterialPoint>
+bool runSelfTest(const MaterialPoint& mp, bool testDE, bool testDDE) {
+  std::ostringstream report;
+  const bool ok = mp.testImplementation(report, testDE, testDDE);
+  if (!ok)
+    std::cout << report.str() << std::endl;
+  return ok;
+}
+
+/// The class an instance of `Material` is actually built from. Normally the class itself.
+template <typename Material>
+struct ConcreteMaterial
+{
+  using type = Material;
+};
+
+/// A subclass that returns the density held by `muesli::material`, which the "density" property
+/// sets. The classes it replaces override `density()` to return a member no constructor initialises.
+template <typename Material>
+struct WithBaseDensity : Material
+{
+  using Material::Material;
+  double density() const override { return muesli::material::density(); }
+};
 
 /// The MUESLI material name corresponding to a wrapper registration prefix.
 ///

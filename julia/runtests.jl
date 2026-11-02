@@ -606,4 +606,122 @@ const λ, μ = lame(E, ν)
         @test mat3(Tmixed) ≈ mat3(Tmixed_ref)
         @test Tvol ≈ M.volumetricStiffness(mp)
     end
+
+    @testset "Rate and temperature dependent plasticity" begin
+        M.setFixedRandomSeed(true)
+        stretch(λ) = [λ 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0]
+
+        function finite_response(mat, MP, λ, t)
+            mp = MP(mat)
+            M.updateCurrentState(mp, t, M.Itensor(stretch(λ)))
+            P = M.Itensor()
+            M.firstPiolaKirchhoffStress!(mp, P)
+            return mat3(P)[1, 1], M.plasticSlip(mp)
+        end
+
+        @testset "types" begin
+            @test M.JohnsonCookMaterial <: M.FiniteStrainMaterial
+            @test M.JohnsonCookMP <: M.FiniteStrainMP
+            @test M.ZerilliArmstrongMaterial <: M.FiniteStrainMaterial
+            @test M.ZerilliArmstrongMP <: M.FiniteStrainMP
+            @test M.ViscoplasticNLMaterial <: M.SmallStrainMaterial
+            @test M.ViscoplasticNLMP <: M.SmallStrainMP
+        end
+
+        @testset "Johnson-Cook" begin
+            jc(; T = 293.0) = properties("young" => 124e3, "poisson" => 0.34, "density" => 8.9e-9,
+                                         "a" => 90.0, "b" => 292.0, "c" => 0.025, "n" => 0.31, "m" => 1.09,
+                                         "edot0" => 1.0, "temp" => T, "modelreftemp" => 293.0, "melttemp" => 1356.0)
+            mat = M.JohnsonCookMaterial(jc())
+            @test M.check(mat)
+            @test M.density(mat) ≈ 8.9e-9
+            @test M.cxxCreateMaterialPoint(mat) isa M.JohnsonCookMP
+
+            @testset "yielding" begin
+                @test finite_response(mat, M.JohnsonCookMP, 1.0001, 1.0)[2] == 0
+                @test finite_response(mat, M.JohnsonCookMP, 1.0, 1.0)[1] ≈ 0 atol = 1e-8
+                @test finite_response(mat, M.JohnsonCookMP, 1.01, 1.0)[2] > 0
+            end
+
+            @testset "a faster load gives a higher stress" begin
+                slow, medium, fast = (finite_response(mat, M.JohnsonCookMP, 1.05, t)[1] for t in (1e3, 1.0, 1e-3))
+                @test fast > medium > slow
+            end
+
+            @testset "a higher temperature gives a lower stress" begin
+                stress(T) = finite_response(M.JohnsonCookMaterial(jc(T = T)), M.JohnsonCookMP, 1.05, 1.0)[1]
+                @test stress(293.0) > stress(600.0) > stress(1000.0)
+            end
+
+            @testset "MUESLI's own consistency test" begin
+                # without the derivative of the energy, which MUESLI skips for this model too
+                @test M.testImplementation(M.JohnsonCookMP(mat), false, true)
+            end
+        end
+
+        @testset "Zerilli-Armstrong" begin
+            za(; T = 293.0) = properties("young" => 124e3, "poisson" => 0.34, "density" => 8.9e-9,
+                                         "c0" => 20.0, "c1" => 0.0, "c2" => 600.0, "c3" => 0.005, "c4" => 0.0003,
+                                         "c5" => 0.0, "n" => 0.5, "temp" => T)
+            mat = M.ZerilliArmstrongMaterial(za())
+            @test M.check(mat)
+            @testset "the density is the one that was set" begin
+                # MUESLI's own density() returns a member no constructor initialises
+                @test M.density(mat) ≈ 8.9e-9
+            end
+            @test M.cxxCreateMaterialPoint(mat) isa M.ZerilliArmstrongMP
+
+            @testset "yielding" begin
+                @test finite_response(mat, M.ZerilliArmstrongMP, 1.0001, 1.0)[2] == 0
+                @test finite_response(mat, M.ZerilliArmstrongMP, 1.01, 1.0)[2] > 0
+            end
+
+            @testset "a faster load gives a higher stress" begin
+                slow, medium, fast = (finite_response(mat, M.ZerilliArmstrongMP, 1.05, t)[1] for t in (1e3, 1.0, 1e-3))
+                @test fast > medium > slow
+            end
+
+            @testset "a higher temperature gives a lower stress" begin
+                stress(T) = finite_response(M.ZerilliArmstrongMaterial(za(T = T)), M.ZerilliArmstrongMP, 1.05, 1.0)[1]
+                @test stress(200.0) > stress(293.0) > stress(500.0)
+            end
+
+            @testset "MUESLI's own consistency test" begin
+                @test M.testImplementation(M.ZerilliArmstrongMP(mat), false, true)
+            end
+        end
+
+        @testset "viscoplasticity with nonlinear hardening" begin
+            function vp(; eta = 1.0)
+                p = properties("young" => 210e3, "poisson" => 0.3, "density" => 7.8e-9,
+                               "isotropich" => 1000.0, "isohardinf" => 100.0, "isohardzero" => 0.0,
+                               "isoharddelta" => 1.0, "kinematich" => 0.0, "yieldstress" => 300.0,
+                               "eta" => eta, "viscousexponent" => 1.0, "alpha" => 0.5)
+                M.setString!(p, "plasticity", "mises")
+                return p
+            end
+            mat = M.ViscoplasticNLMaterial(vp())
+            @test M.check(mat)
+            @testset "the density is the one that was set" begin
+                @test M.density(mat) ≈ 7.8e-9
+            end
+            @test M.cxxCreateMaterialPoint(mat) isa M.ViscoplasticNLMP
+
+            function small_response(ε11, t)
+                mp = M.ViscoplasticNLMP(mat)
+                M.updateCurrentState(mp, t, M.Istensor([ε11 0.0 0.0; 0.0 0.0 0.0; 0.0 0.0 0.0]))
+                σ = M.Istensor()
+                M.stress!(mp, σ)
+                return mat3(σ)[1, 1], M.plasticSlip(mp)
+            end
+
+            @test small_response(1e-4, 1.0)[2] == 0
+            @test small_response(2e-2, 1.0)[2] > 0
+            @testset "a faster load gives a higher stress" begin
+                slow, medium, fast = (small_response(2e-2, t)[1] for t in (1e3, 1.0, 1e-3))
+                @test fast > medium ≥ slow
+            end
+            @test M.testImplementation(M.ViscoplasticNLMP(mat), true, true)
+        end
+    end
 end

@@ -231,6 +231,26 @@ without that package.
 To move a tensor to or from Julia, prefer the bulk methods `toArray!` and `fromArray!` over
 `cxxgetindex`: one call per tensor instead of one per element.
 
+A material whose `density()` returns a member no MUESLI constructor initialises (the Zerilli-Armstrong
+and the nonlinear viscoplastic material do) is instantiated through `WithBaseDensity`, a subclass
+that returns the density the `"density"` property sets. Specialise `ConcreteMaterial` for it.
+
+The materials built from a `MaterialProperties` map are not given MUESLI's positional constructors
+where those are broken: the Johnson-Cook one ignores its melting temperature, and its property map
+constructor overwrites `edot0` with `ageparam`, so that key is never set.
+
+MUESLI's own consistency check of a material point is available as `testImplementation(mp, testDE,
+testDDE)`. MUESLI skips the energy derivative (`testDE`) for the Johnson-Cook and Zerilli-Armstrong
+models, since they are dissipative, and the tests do the same. Call `setFixedRandomSeed(true)`
+first so that the random state it draws is reproducible.
+
+Not bound, because MUESLI 2.0's own `test()` fails for them or the class is a stub:
+
+| Class | Why |
+| :-- | :-- |
+| `FplasticRateDependent` | MUESLI's own test fails (zero stress, `inf` and `nan` errors) |
+| `FLemaitre` | a copy of `fplastic` without damage parameters; its self test fails |
+
 Points worth remembering when adding a binding:
 
 - Shift every index a user can observe: `i - 1` on the way in.
