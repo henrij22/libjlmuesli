@@ -168,6 +168,8 @@ jobs:
 
       - name: Build libjlmuesli
         run: |
+          # doctest lists the tests by running the executable at the end of the build
+          source .github/scripts/runtime-env.sh "${{ steps.julia-paths.outputs.cxxwrap }}"
           cmake -B build -G "${{ matrix.generator }}" \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="${MUESLI_PREFIX};${{ steps.julia-paths.outputs.cxxwrap }}" \
