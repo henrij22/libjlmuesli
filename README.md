@@ -271,6 +271,9 @@ The materials built from a `MaterialProperties` map are not given MUESLI's posit
 where those are broken: the Johnson-Cook one ignores its melting temperature, and its property map
 constructor overwrites `edot0` with `ageparam`, so that key is never set.
 
+The positional `Viscoplastic` constructor takes the Lamé constants and zeroes the viscous exponent and the reference
+rate, so the binding keeps its `(E, nu, …)` signature but builds the material from a property map.
+
 MUESLI's own consistency check of a material point is available as `testImplementation(mp, testDE,
 testDDE)`. MUESLI skips the energy derivative (`testDE`) for the Johnson-Cook and Zerilli-Armstrong
 models, since they are dissipative, and the tests do the same. Call `setFixedRandomSeed(true)`

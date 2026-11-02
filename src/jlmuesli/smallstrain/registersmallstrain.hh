@@ -20,6 +20,13 @@ struct ConcreteMaterial<muesli::viscoplasticnlMaterial>
   using type = WithBaseDensity<muesli::viscoplasticnlMaterial>;
 };
 
+// viscoplasticMaterial::density() returns a member that only the positional constructor initialises
+template <>
+struct ConcreteMaterial<muesli::viscoplasticMaterial>
+{
+  using type = WithBaseDensity<muesli::viscoplasticMaterial>;
+};
+
 // smallstrainbindings.cpp: the family roots and everything they share
 void registerSmallStrainBase(jlcxx::Module& mod);
 
@@ -159,9 +166,28 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
 
     auto [mat, mp] = addSmallStrainMaterial<Material, MaterialPoint>(mod, "Viscoplastic");
 
+    // The positional MUESLI constructor reads (λ, μ) and zeroes the viscous exponent and the reference rate,
+    // so the material is built from properties, like the other forms.
     mat.constructor([](double E, double nu, double rho, double Hiso, double Hkine, double yield,
                        const std::string& plasticityType, double eta, double alpha) {
-      return new Material{"Viscoplastic", E, nu, rho, Hiso, Hkine, yield, plasticityType, eta, alpha};
+      if (plasticityType != "mises" && plasticityType != "von_mises" && plasticityType != "tresca")
+        throw std::invalid_argument("Viscoplastic supports the plasticity types \"mises\" and \"tresca\", got \"" +
+                                    plasticityType + "\".");
+
+      MaterialProperties properties;
+      properties.set("young", E);
+      properties.set("poisson", nu);
+      properties.set("density", rho);
+      properties.set("isotropich", Hiso);
+      properties.set("kinematich", Hkine);
+      properties.set("yieldstress", yield);
+      properties.set("eta", eta);
+      properties.set("alpha", alpha);
+      properties.set("viscousexponent", 1.0);
+      properties.set("srateref", 1.0);
+      properties.setString("model", plasticityType == "tresca" ? "tresca" : "von_mises");
+      return static_cast<Material*>(new
+                                    typename ConcreteMaterial<Material>::type{"Viscoplastic", properties.multiMap()});
     });
 
     mp.method("setConvergedState",
