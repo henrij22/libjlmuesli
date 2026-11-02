@@ -108,6 +108,9 @@ jobs:
       MUESLI_PREFIX: ${{ matrix.prefix }}
     # 'pre' is whatever Julia is currently in prerelease; it may break for reasons outside this repo
     continue-on-error: ${{ matrix.julia-version == 'pre' }}
+    permissions: # lets julia-actions/cache delete the old caches it created
+      actions: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -148,6 +151,11 @@ jobs:
         uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.julia-version }}
+
+      - name: Cache Julia packages and artifacts
+        uses: julia-actions/cache@v3
+        with:
+          cache-registries: false
 
       - name: Install Julia dependencies
         run: julia --project=julia -e 'using Pkg; Pkg.instantiate()'
