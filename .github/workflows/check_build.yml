@@ -56,8 +56,9 @@ jobs:
             prefix: C:/muesli-install
             generator: Ninja
             blas: -DBLA_VENDOR=OpenBLAS
-            # Julia ships its own, older MinGW runtime, and this library is loaded next to it
-            linker: -static-libstdc++ -static-libgcc
+            # Julia ships its own, older libstdc++, and this library is loaded next to it. Not
+            # -static-libgcc: its unwinder symbols would be exported and clash when linking.
+            linker: -static-libstdc++
     steps:
       - name: Checkout code
         uses: actions/checkout@v7

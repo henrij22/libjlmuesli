@@ -27,6 +27,7 @@ add_library(jlmuesli SHARED ${JLMUESLI_SOURCES})
 if(MINGW)
   # the templated jlcxx registration produces object files with more sections than COFF allows by default
   target_compile_options(jlmuesli PRIVATE -Wa,-mbig-obj)
-  # Julia ships its own, older MinGW runtime and this library is loaded next to it
-  target_link_options(jlmuesli PRIVATE -static-libstdc++ -static-libgcc)
+  # Julia ships its own, older libstdc++ and this library is loaded next to it. Not
+  # -static-libgcc: libmuesli would export its unwinder symbols and clash with ours.
+  target_link_options(jlmuesli PRIVATE -static-libstdc++)
 endif()

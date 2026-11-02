@@ -48,7 +48,7 @@ target_link_libraries(jlmuesli_tests PRIVATE jlmuesli doctest::doctest "${Julia_
 target_include_directories(jlmuesli_tests PRIVATE "${CMAKE_SOURCE_DIR}/src")
 target_compile_features(jlmuesli_tests PRIVATE cxx_std_17)
 if(MINGW)
-  target_link_options(jlmuesli_tests PRIVATE -static-libstdc++ -static-libgcc)
+  target_link_options(jlmuesli_tests PRIVATE -static-libstdc++)
 endif()
 
 # so the loader finds libjulia and libcxxwrap_julia when ctest runs the binary
