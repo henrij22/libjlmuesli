@@ -40,7 +40,7 @@ endif()
 
 message(STATUS "Building C++ tests against ${Julia_LIBRARY}")
 
-add_executable(jlmuesli_tests test_helpers.cpp)
+add_executable(jlmuesli_tests test_helpers.cpp test_convert.cpp)
 
 target_link_libraries(jlmuesli_tests PRIVATE jlmuesli doctest::doctest "${Julia_LIBRARY}")
 target_include_directories(jlmuesli_tests PRIVATE "${CMAKE_SOURCE_DIR}/src")

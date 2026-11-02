@@ -12,6 +12,7 @@ file(GLOB_RECURSE JLMUESLI_HEADERS ${JLMUESLI_INCLUDE_DIR}/*.hh)
 set(JLMUESLI_SOURCES
     ${JLMUESLI_SOURCE_DIR}/muesli.cpp
     ${JLMUESLI_SOURCE_DIR}/util/helpers.cpp
+    ${JLMUESLI_SOURCE_DIR}/util/materialbase.cpp
     ${JLMUESLI_SOURCE_DIR}/util/materialstate.cpp
     ${JLMUESLI_SOURCE_DIR}/util/tensors.cpp
     ${JLMUESLI_SOURCE_DIR}/util/propertynames.cpp

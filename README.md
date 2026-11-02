@@ -4,7 +4,7 @@
 
 The C++ component of [MuesliMaterials.jl](https://github.com/henrij22/MuesliMaterials.jl) — a
 [CxxWrap](https://github.com/JuliaInterop/CxxWrap.jl)-based binding layer over
-[MUESLI](https://bitbucket.org/ignromero/muesli/src/master/) (Material UnivErSal LIbrary), the
+[MUESLI](https://gitlab.com/ignacio.romero/muesli) (Material UnivErSal LIbrary), the
 constitutive-model library developed at IMDEA Materials Institute.
 
 Building this repository produces a single shared library, `libjlmuesli`, which Julia loads
@@ -26,8 +26,8 @@ the Julia side feel native:
 - **1-based indexing** everywhere it is observable — tensor and vector components, and the
   `materialState` accessors, are all shifted on the way in and out.
 - **Column-major input.** Julia matrices arrive column-major and MUESLI's constructors are
-  row-major, so `toITensor`/`toIstensor`/`toItensor4` in `util/common.hh` reorder the
-  components rather than transposing by accident.
+  row-major, so `util/convert.hh` reorders the components rather than transposing by accident.
+  `Istensor` keeps the symmetric part of a non-symmetric input.
 - **Bang methods** (`stress!`, `tangentTensor!`, `CauchyStress!`, …) for every MUESLI routine
   that writes into a preallocated tensor, matching the C++ out-parameter style.
 - **PascalCase type names** — `itensor` becomes `Itensor`, `elasticIsotropicMaterial` becomes
@@ -40,7 +40,9 @@ the Julia side feel native:
 | Path | Contents |
 | :-- | :-- |
 | `src/jlmuesli/muesli.cpp` | module entry point, calls the register functions |
-| `src/jlmuesli/util/common.hh` | Julia ↔ MUESLI tensor conversion helpers |
+| `src/jlmuesli/util/convert.hh` | column-major ↔ row-major conversion on raw pointers, no Julia dependency |
+| `src/jlmuesli/util/common.hh` | the same for `jlcxx::ArrayRef`, with shape checks |
+| `src/jlmuesli/util/materialbase.cpp` | methods every material and material point shares |
 | `src/jlmuesli/util/supertypes.hh` | `jlcxx::SuperType` specializations for the class hierarchy |
 | `src/jlmuesli/util/` | tensors, material properties, material state, property names |
 | `src/jlmuesli/smallstrain/` | small-strain materials: elastic, plastic, viscous, damage |
@@ -73,17 +75,17 @@ to it. That patch is the same one
 [Yggdrasil](https://github.com/JuliaPackaging/Yggdrasil/blob/master/M/MuesliMaterials/build_tarballs.jl)
 applies when building `MuesliMaterials_jll`.
 
-**Yggdrasil is the source of truth for the pinned commit.** It currently builds
-`345c6c044f6cecd347442b19aeb707a338fd5e9e`; match it locally, or you will be developing
-against a different MUESLI than the released binaries. The same commit is pinned in
-`.github/workflows/check_build.yml` as `MUESLI_COMMIT`, and the three should be kept in step.
+**Yggdrasil is the source of truth for the pinned commit.** Match it locally, or you will be
+developing against a different MUESLI than the released binaries. The same commit is pinned
+here and in `.github/workflows/check_build.yml` as `MUESLI_COMMIT`; keep the three in step.
+The current pin is `52df6390181aca4b2add1bbc9531c636b8b4160f` (MUESLI 2.0).
 
 ```bash
 PREFIX=$HOME/dev/install
 
-git clone https://bitbucket.org/ignromero/muesli.git
+git clone https://gitlab.com/ignacio.romero/muesli.git
 cd muesli
-git checkout 345c6c044f6cecd347442b19aeb707a338fd5e9e
+git checkout 52df6390181aca4b2add1bbc9531c636b8b4160f
 git apply /path/to/libjlmuesli/patches/cmakesupport.patch
 
 cmake -B builddir \
@@ -144,9 +146,10 @@ ctest --test-dir build --output-on-failure
 ```
 
 These cover the helpers that do not touch the Julia runtime — the material property map and
-its string-option encoding. Everything else in this repository is CxxWrap registration code,
+its string-option encoding, and the layout conversion in `util/convert.hh`. Everything else in this repository is CxxWrap registration code,
 which cannot be exercised without a live Julia runtime, so it is covered by the suite below.
-Add new cases to `test/test_helpers.cpp`, or a new file listed in `test/CMakeLists.txt`.
+Add new cases to `test/test_helpers.cpp` or `test/test_convert.cpp`, or a new file listed in
+`test/CMakeLists.txt`.
 
 ### Julia integration tests
 
@@ -214,7 +217,21 @@ Other notes:
 
 ## Working on the bindings
 
-A new binding is a `method` call on the relevant type wrapper. Points worth remembering:
+A new material is one `addSmallStrainMaterial` / `addFiniteStrainMaterial` call plus its
+constructors in `registersmallstrain.hh` / `registerfinitestrain.hh`. The interface shared by a
+family is registered once on its root in `smallstrainbindings.cpp` / `finitestrainbindings.cpp`,
+and what every material has in common in `util/materialbase.cpp`; a material only repeats a
+method when its signature differs (a history-carrying `setConvergedState`, for example).
+
+A material point only holds a C++ reference to its material, so it must not outlive it. The raw
+`...MP(material)` constructors and `cxxCreateMaterialPoint` do nothing to prevent that;
+MuesliMaterials.jl wraps them and keeps the material alive. The bindings are not meant to be used
+without that package.
+
+To move a tensor to or from Julia, prefer the bulk methods `toArray!` and `fromArray!` over
+`cxxgetindex`: one call per tensor instead of one per element.
+
+Points worth remembering when adding a binding:
 
 - Shift every index a user can observe: `i - 1` on the way in.
 - A lambda's parameter list and its `arg(...)` specifiers must agree in arity. A mismatch

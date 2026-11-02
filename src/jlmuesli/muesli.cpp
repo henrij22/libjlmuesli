@@ -21,9 +21,9 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
   registerInterfaceState(mod);
   registerPropertyName(mod);
 
-  // Register base classes (important?)
-  mod.add_type<muesli::material>("Material");
-  mod.add_type<muesli::materialPoint>("MaterialPoint");
+  // The root classes have to exist before any family that derives from them, and they carry
+  // the methods every material and material point shares.
+  registerMaterialBase(mod);
 
   registerSmallStrainMaterials(mod);
   registerFiniteStrainMaterials(mod);

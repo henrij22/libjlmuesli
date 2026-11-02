@@ -6,155 +6,81 @@
 #include <jlmuesli/util/utils.hh>
 
 #include <muesli/muesli.h>
-#include <muesli/Utils/utils.h>
 
 #include <jlcxx/jlcxx.hpp>
 
-template <typename Material, typename MaterialPoint, typename MaterialBase, typename MaterialPointBase,
-          bool registerConvergedState>
-std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> registerFiniteStrainMaterial(
-    jlcxx::Module& mod, const std::string& name) {
-  std::string matName = name + "Material";
-  std::string mpName  = name + "MP";
+// Registered once on the family root; all of these are virtual in finiteStrainMP (or
+// non-virtual and not hidden by any bound material), so they dispatch to the concrete material.
+void registerFiniteStrainBase(jlcxx::Module& mod) {
+  using jlcxx::julia_base_type;
+  using muesli::finiteStrainMP;
 
-  using jlcxx::arg;
+  mod.add_type<muesli::finiteStrainMaterial>("FiniteStrainMaterial", julia_base_type<muesli::material>());
+  mod.add_type<muesli::f_invariants>("F_invariants", julia_base_type<muesli::finiteStrainMaterial>());
 
-  auto mat = mod.add_type<Material>(matName, jlcxx::julia_base_type<MaterialBase>());
-  mat.method("check", &Material::check);
-  mat.method("print", [](Material& mat) {
-    mat.print(std::cout);
-    std::cout << std::endl;
-  });
-  mat.method("getProperty", &Material::getProperty);
+  mod.add_type<finiteStrainMP>("FiniteStrainMP", julia_base_type<muesli::materialPoint>())
+      .method("setRandom", [](finiteStrainMP& mp) { mp.setRandom(); })
+      .method("setTemperature", [](finiteStrainMP& mp, double tt) { mp.setTemperature(tt); })
 
-  mat.constructor(
-      [muesliName = muesliMaterialName(name)](const MaterialProperties& properties) {
-        return new Material{muesliName, properties.multiMap()};
-      },
-      arg("properties"));
+      // --- Energies ---
+      .method("energyDissipationInStep", [](const finiteStrainMP& mp) { return mp.energyDissipationInStep(); })
+      .method("dissipatedEnergyDF", [](const finiteStrainMP& mp) { return mp.dissipatedEnergyDF(); })
+      .method("dissipatedEnergyDTheta", [](const finiteStrainMP& mp) { return mp.dissipatedEnergyDTheta(); })
+      .method("kineticPotential", [](const finiteStrainMP& mp) { return mp.kineticPotential(); })
+      .method("effectiveStoredEnergy", [](const finiteStrainMP& mp) { return mp.effectiveStoredEnergy(); })
+      .method("storedEnergy", [](const finiteStrainMP& mp) { return mp.storedEnergy(); })
 
-  auto mp =
-      mod.add_type<MaterialPoint>(mpName, jlcxx::julia_base_type<MaterialPointBase>())
-          .constructor([](const Material& fm) { return new MaterialPoint(fm); })
+      // --- Stresses ---
+      .method("CauchyStress!", [](const finiteStrainMP& mp, istensor& sigma) { mp.CauchyStress(sigma); })
+      .method("energyMomentumTensor!", [](const finiteStrainMP& mp, itensor& S) { mp.energyMomentumTensor(S); })
+      .method("firstPiolaKirchhoffStress!",
+              [](const finiteStrainMP& mp, itensor& P) { mp.firstPiolaKirchhoffStress(P); })
+      .method("firstPiolaKirchhoffStressNumerical!",
+              [](const finiteStrainMP& mp, itensor& P) { mp.firstPiolaKirchhoffStressNumerical(P); })
+      .method("KirchhoffStress!", [](const finiteStrainMP& mp, istensor& tau) { mp.KirchhoffStress(tau); })
+      .method("secondPiolaKirchhoffStress!",
+              [](const finiteStrainMP& mp, istensor& S) { mp.secondPiolaKirchhoffStress(S); })
+      .method("secondPiolaKirchhoffStressNumerical!",
+              [](const finiteStrainMP& mp, istensor& S) { mp.secondPiolaKirchhoffStressNumerical(S); })
 
-          // --- Implementation / Utilities ---
-          // .method(
-          //     "testImplementation",
-          //     [](MaterialPoint& mp, bool testDE = true, bool testDDE = true) -> bool {
-          //       // For the std::ostream& of=std::cout argument, we might ignore or redirect it
-          //       // if you want to capture output. For now, we just call the default version.
-          //       // If you want to specify a different stream, you'd need a more elaborate approach.
-          //       return mp.testImplementation(std::cout, true, true);
-          //     },
-          //     jlcxx::arg("testDE") = true, jlcxx::arg("testDDE") = true)
-          .method("setRandom", [](MaterialPoint& mp) { mp.setRandom(); })
-          .method("setTemperature", [](MaterialPoint& mp, double tt) { mp.setTemperature(tt); })
+      // --- Elasticity tangents ---
+      .method("convectedTangent!", [](const finiteStrainMP& mp, itensor4& c) { mp.convectedTangent(c); })
+      .method("materialTangent!", [](const finiteStrainMP& mp, itensor4& c) { mp.materialTangent(c); })
+      .method("spatialTangent!", [](const finiteStrainMP& mp, itensor4& c) { mp.spatialTangent(c); })
 
-          // --- Energies ---
-          .method("energyDissipationInStep", [](MaterialPoint& mp) { return mp.energyDissipationInStep(); })
-          .method("dissipatedEnergyDF", [](MaterialPoint& mp) { return mp.dissipatedEnergyDF(); })
-          .method("dissipatedEnergyDTheta", [](MaterialPoint& mp) { return mp.dissipatedEnergyDTheta(); })
-          .method("kineticPotential", [](MaterialPoint& mp) { return mp.kineticPotential(); })
-          .method("effectiveStoredEnergy", [](MaterialPoint& mp) { return mp.effectiveStoredEnergy(); })
-          .method("storedEnergy", [](MaterialPoint& mp) { return mp.storedEnergy(); })
+      // --- Tangent contractions ---
+      .method("contractWithAllTangents!",
+              [](const finiteStrainMP& mp, const ivector& v1, const ivector& v2, itensor& Tdev, istensor& Tmixed) {
+                double Tvol = 0.0;
+                mp.contractWithAllTangents(v1, v2, Tdev, Tmixed, Tvol);
+                return Tvol;
+              })
+      .method("contractWithConvectedTangent!", [](const finiteStrainMP& mp, const ivector& v1, const ivector& v2,
+                                                  itensor& T) { mp.contractWithConvectedTangent(v1, v2, T); })
+      .method("contractWithSpatialTangent!", [](const finiteStrainMP& mp, const ivector& v1, const ivector& v2,
+                                                itensor& T) { mp.contractWithSpatialTangent(v1, v2, T); })
+      .method("contractWithDeviatoricTangent!", [](const finiteStrainMP& mp, const ivector& v1, const ivector& v2,
+                                                   itensor& T) { mp.contractWithDeviatoricTangent(v1, v2, T); })
+      .method("contractWithMixedTangent!",
+              [](const finiteStrainMP& mp, istensor& CM) { mp.contractWithMixedTangent(CM); })
+      .method("convectedTangentTimesSymmetricTensor!",
+              [](const finiteStrainMP& mp, const istensor& M, istensor& CM) {
+                mp.convectedTangentTimesSymmetricTensor(M, CM);
+              })
+      .method("volumetricStiffness", [](const finiteStrainMP& mp) { return mp.volumetricStiffness(); })
 
-          // --- Stresses ---
-          .method("CauchyStress!", [](MaterialPoint& mp, istensor& sigma) { mp.CauchyStress(sigma); })
-          .method("energyMomentumTensor!", [](MaterialPoint& mp, itensor& S) { mp.energyMomentumTensor(S); })
-          .method("firstPiolaKirchhoffStress!", [](MaterialPoint& mp, itensor& P) { mp.firstPiolaKirchhoffStress(P); })
-          .method("firstPiolaKirchhoffStressNumerical!",
-                  [](MaterialPoint& mp, itensor& P) { mp.firstPiolaKirchhoffStressNumerical(P); })
-          .method("KirchhoffStress!", [](MaterialPoint& mp, istensor& tau) { mp.KirchhoffStress(tau); })
-          .method("secondPiolaKirchhoffStress!",
-                  [](MaterialPoint& mp, istensor& S) { mp.secondPiolaKirchhoffStress(S); })
-          .method("secondPiolaKirchhoffStressNumerical!",
-                  [](MaterialPoint& mp, istensor& S) { mp.secondPiolaKirchhoffStressNumerical(S); })
+      // --- Bookkeeping (commit/reset/get*State are on MaterialPoint) ---
+      .method("updateCurrentState",
+              [](finiteStrainMP& mp, double theTime, const itensor& F) { mp.updateCurrentState(theTime, F); })
 
-          // --- Elasticity tangents ---
-          .method("convectedTangent!", [](MaterialPoint& mp, itensor4& c) { mp.convectedTangent(c); })
-          .method("materialTangent!", [](MaterialPoint& mp, itensor4& c) { mp.materialTangent(c); })
-          .method("spatialTangent!", [](MaterialPoint& mp, itensor4& c) { mp.spatialTangent(c); })
+      // --- Extract state (returned as copies) ---
+      .method("convergedDeformationGradient",
+              [](const finiteStrainMP& mp) -> itensor { return mp.convergedDeformationGradient(); })
+      .method("deformationGradient", [](const finiteStrainMP& mp) -> itensor { return mp.deformationGradient(); })
 
-          // --- Tangent contractions ---
-          // .method("contractWithAllTangents",
-          //         [](MaterialPoint& mp, JuliaVector v1, JuliaVector v2) {
-          //           itensor Tdev;
-          //           istensor Tmixed;
-          //           double Tvol = 0.0;
-          //           mp.contractWithAllTangents(toIVector(v1), toIVector(v2), Tdev, Tmixed, Tvol);
-          //           // Return a tuple: (Tdev, Tmixed, Tvol)
-          //           // Tdev is an itensor => array
-          //           // Tmixed is an istensor => array
-          //           // Tvol is double
-          //           return std::make_tuple(itensorToArrayRef(Tdev), itensorToArrayRef(Tmixed), Tvol);
-          //         })
-          .method("contractWithConvectedTangent!", [](MaterialPoint& mp, const ivector& v1, const ivector& v2,
-                                                      itensor& T) { mp.contractWithConvectedTangent(v1, v2, T); })
-          .method("contractWithSpatialTangent!", [](MaterialPoint& mp, const ivector& v1, const ivector& v2,
-                                                    itensor& T) { mp.contractWithSpatialTangent(v1, v2, T); })
-          .method("contractWithDeviatoricTangent!", [](MaterialPoint& mp, const ivector& v1, const ivector& v2,
-                                                       itensor& T) { mp.contractWithDeviatoricTangent(v1, v2, T); })
-          .method("contractWithMixedTangent!", [](MaterialPoint& mp, istensor& CM) { mp.contractWithMixedTangent(CM); })
-          .method("convectedTangentTimesSymmetricTensor!",
-                  [](MaterialPoint& mp, const istensor& M, istensor& CM) {
-                    mp.convectedTangentTimesSymmetricTensor(M, CM);
-                  })
-          .method("volumetricStiffness", [](MaterialPoint& mp) { return mp.volumetricStiffness(); })
-
-          // --- Bookkeeping ---
-          .method("commitCurrentState", [](MaterialPoint& mp) { mp.commitCurrentState(); })
-          .method("resetCurrentState", [](MaterialPoint& mp) { mp.resetCurrentState(); })
-          .method("updateCurrentState",
-                  [](MaterialPoint& mp, double theTime, itensor F) { mp.updateCurrentState(theTime, F); })
-
-          // --- Extract state ---
-          // For convergedDeformationGradient, we have both const and non-const versions in C++.
-          // We'll just expose one that returns a copy
-          .method("convergedDeformationGradient",
-                  [](MaterialPoint& mp) -> itensor { return mp.convergedDeformationGradient(); })
-          .method("deformationGradient", [](MaterialPoint& mp) -> itensor { return mp.deformationGradient(); })
-          .method("getConvergedState", [](MaterialPoint& mp) { return mp.getConvergedState(); })
-          .method("getCurrentState", [](MaterialPoint& mp) { return mp.getCurrentState(); })
-
-          // --- Miscellaneous ---
-          .method("density", [](MaterialPoint& mp) { return mp.density(); })
-          .method("plasticSlip", [](MaterialPoint& mp) { return mp.plasticSlip(); })
-          .method("waveVelocity", [](MaterialPoint& mp) { return mp.waveVelocity(); })
-          // .method("parentMaterial",
-          //         [](MaterialPoint& mp) -> const finiteStrainMaterial& {
-          //           // returns const reference to finiteStrainMaterial
-          //           // You may want to wrap finiteStrainMaterial as well.
-          //           return mp.parentMaterial();
-          //         })
-          .method("getDamage", [](MaterialPoint& mp) { return mp.getDamage(); })
-          .method("isFullyDamaged", [](MaterialPoint& mp) { return mp.isFullyDamaged(); });
-
-  if constexpr (registerConvergedState) {
-    mp.method("setConvergedState",
-              [](MaterialPoint& mp, double theTime, const itensor& strain) { mp.setConvergedState(theTime, strain); });
-  }
-
-  return std::make_pair(mat, mp);
+      // --- Miscellaneous ---
+      .method("plasticSlip", [](const finiteStrainMP& mp) { return mp.plasticSlip(); })
+      .method("waveVelocity", [](const finiteStrainMP& mp) { return mp.waveVelocity(); })
+      .method("getDamage", [](const finiteStrainMP& mp) { return mp.getDamage(); })
+      .method("isFullyDamaged", [](const finiteStrainMP& mp) { return mp.isFullyDamaged(); });
 }
-
-// Explicitly instantiate templates
-#define INSTANTIATE_FINITE_STRAIN_MATERIAL(Material, MaterialMP, MaterialBase, MPBase) \
-  template std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialMP>>     \
-  registerFiniteStrainMaterial<Material, MaterialMP, MaterialBase, MPBase, true>(jlcxx::Module&, const std::string&);
-
-#define INSTANTIATE_FINITE_STRAIN_MATERIAL_F(Material, MaterialMP, MaterialBase, MPBase) \
-  template std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialMP>>       \
-  registerFiniteStrainMaterial<Material, MaterialMP, MaterialBase, MPBase, false>(jlcxx::Module&, const std::string&);
-
-// Use the macro for explicit instantiations
-INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::neohookeanMaterial, muesli::neohookeanMP, muesli::f_invariants,
-                                   muesli::fisotropicMP)
-INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::svkMaterial, muesli::svkMP, muesli::finiteStrainMaterial,
-                                   muesli::finiteStrainMP)
-INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::mooneyMaterial, muesli::mooneyMP, muesli::f_invariants, muesli::fisotropicMP)
-INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::arrudaboyceMaterial, muesli::arrudaboyceMP, muesli::f_invariants,
-                                   muesli::fisotropicMP)
-INSTANTIATE_FINITE_STRAIN_MATERIAL(muesli::yeohMaterial, muesli::yeohMP, muesli::f_invariants, muesli::fisotropicMP)
-
-INSTANTIATE_FINITE_STRAIN_MATERIAL_F(muesli::fplasticMaterial, muesli::fplasticMP, muesli::finiteStrainMaterial,
-                                     muesli::finiteStrainMP)
