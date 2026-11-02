@@ -47,6 +47,7 @@ the Julia side feel native:
 | `src/jlmuesli/util/` | tensors, material properties, material state, property names |
 | `src/jlmuesli/smallstrain/` | small-strain materials: elastic, plastic, viscous, damage |
 | `src/jlmuesli/finitestrain/` | finite-strain materials: hyperelastic and finite plasticity |
+| `src/jlmuesli/reduced/` | reduced models: bar, beam, shell and plane stress on top of a 3D point |
 | `test/` | C++ unit tests (doctest + CTest) |
 | `patches/` | `cmakesupport.patch`, which adds a CMake project to MUESLI |
 | `julia/` | Julia integration suite run against the freshly built library |
@@ -215,6 +216,37 @@ Other notes:
 - Delete it once the JLL is released with your changes, so the environment goes back to the
   published binary.
 
+## Reduced models
+
+A reduced point wraps a 3D material point for an element that only controls part of the strain: the
+caller prescribes the *master* strain components, the model solves for the remaining ones so that
+their stress is zero, and the tangent is condensed statically onto the master block,
+`C* = C_mm - C_mz C_zz⁻¹ C_zm`. Formulation and references are in MUESLI's `reducedsmallstrain.cpp`
+and `reducedfinitestrain.cpp`.
+
+| Small strain | Finite strain | Master components | Zero stress | Use |
+| :-- | :-- | :-- | :-- | :-- |
+| `SbarMP` | `FbarMP` | 11 | 22, 33, 23, 13, 12 | uniaxial stress |
+| `SbeamMP` | `FbeamMP` | 33, 23, 13 | 11, 22, 12 | beam along axis 3 |
+| `SshellMP` | `FshellMP` | 11, 22, 23, 13, 12 | 33 | shell, plane stress with transverse shear |
+| `SplaneMP` | `FplaneMP` | 11, 22, 12 | 33, 23, 13 | plane stress |
+
+- The finite-strain models work in the Green-Lagrange strain `E = (FᵀF - I)/2` and its work-conjugate
+  second Piola-Kirchhoff stress, the small-strain ones in the strain and the Cauchy stress.
+- `Reduced…MP(point)` takes the 3D point; `Reduced…MP(point, "nlcg")` selects the nonlinear conjugate
+  gradient solver instead of Newton-Raphson, which is more robust for plasticity.
+- `updateCurrentState!(mp, t, ε)` (small) and `updateCurrentState!(mp, t, F)` (finite) **overwrite the
+  argument** with the full 3D strain or deformation gradient, including the solved components.
+- `tangentMatrix!` (small) and `convectedTangentMatrix!` (finite) fill a 6×6 matrix in Voigt order
+  `[11, 22, 33, 23, 13, 12]` with the *engineering* tangent, `dS = C dE` with `γ = 2ε` for the shears.
+  Only the master block is non-zero.
+- The reduced point keeps a pointer to the 3D point, which must outlive it (MuesliMaterials.jl
+  ensures this). The shared interface is on `ReducedSmallStrainMP` and `ReducedFiniteStrainMP`.
+- The `SuperType` entries point straight at the root: the intermediate `reduced1z/3z/5z` classes are
+  not bound, and `static_cast` reaches the root through them.
+- MUESLI prints `Error in back linesearch` from its nonlinear conjugate gradient solver when the
+  problem is already quadratic, as it is for linear elasticity. The result is correct.
+
 ## Working on the bindings
 
 A new material is one `addSmallStrainMaterial` / `addFiniteStrainMaterial` call plus its
@@ -230,6 +262,26 @@ without that package.
 
 To move a tensor to or from Julia, prefer the bulk methods `toArray!` and `fromArray!` over
 `cxxgetindex`: one call per tensor instead of one per element.
+
+A material whose `density()` returns a member no MUESLI constructor initialises (the Zerilli-Armstrong
+and the nonlinear viscoplastic material do) is instantiated through `WithBaseDensity`, a subclass
+that returns the density the `"density"` property sets. Specialise `ConcreteMaterial` for it.
+
+The materials built from a `MaterialProperties` map are not given MUESLI's positional constructors
+where those are broken: the Johnson-Cook one ignores its melting temperature, and its property map
+constructor overwrites `edot0` with `ageparam`, so that key is never set.
+
+MUESLI's own consistency check of a material point is available as `testImplementation(mp, testDE,
+testDDE)`. MUESLI skips the energy derivative (`testDE`) for the Johnson-Cook and Zerilli-Armstrong
+models, since they are dissipative, and the tests do the same. Call `setFixedRandomSeed(true)`
+first so that the random state it draws is reproducible.
+
+Not bound, because MUESLI 2.0's own `test()` fails for them or the class is a stub:
+
+| Class | Why |
+| :-- | :-- |
+| `FplasticRateDependent` | MUESLI's own test fails (zero stress, `inf` and `nan` errors) |
+| `FLemaitre` | a copy of `fplastic` without damage parameters; its self test fails |
 
 Points worth remembering when adding a binding:
 

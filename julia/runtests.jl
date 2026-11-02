@@ -606,4 +606,244 @@ const λ, μ = lame(E, ν)
         @test mat3(Tmixed) ≈ mat3(Tmixed_ref)
         @test Tvol ≈ M.volumetricStiffness(mp)
     end
+
+    @testset "Rate and temperature dependent plasticity" begin
+        M.setFixedRandomSeed(true)
+        stretch(λ) = [λ 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0]
+
+        function finite_response(mat, MP, λ, t)
+            mp = MP(mat)
+            M.updateCurrentState(mp, t, M.Itensor(stretch(λ)))
+            P = M.Itensor()
+            M.firstPiolaKirchhoffStress!(mp, P)
+            return mat3(P)[1, 1], M.plasticSlip(mp)
+        end
+
+        @testset "types" begin
+            @test M.JohnsonCookMaterial <: M.FiniteStrainMaterial
+            @test M.JohnsonCookMP <: M.FiniteStrainMP
+            @test M.ZerilliArmstrongMaterial <: M.FiniteStrainMaterial
+            @test M.ZerilliArmstrongMP <: M.FiniteStrainMP
+            @test M.ViscoplasticNLMaterial <: M.SmallStrainMaterial
+            @test M.ViscoplasticNLMP <: M.SmallStrainMP
+        end
+
+        @testset "Johnson-Cook" begin
+            jc(; T = 293.0) = properties("young" => 124e3, "poisson" => 0.34, "density" => 8.9e-9,
+                                         "a" => 90.0, "b" => 292.0, "c" => 0.025, "n" => 0.31, "m" => 1.09,
+                                         "edot0" => 1.0, "temp" => T, "modelreftemp" => 293.0, "melttemp" => 1356.0)
+            mat = M.JohnsonCookMaterial(jc())
+            @test M.check(mat)
+            @test M.density(mat) ≈ 8.9e-9
+            @test M.cxxCreateMaterialPoint(mat) isa M.JohnsonCookMP
+
+            @testset "yielding" begin
+                @test finite_response(mat, M.JohnsonCookMP, 1.0001, 1.0)[2] == 0
+                @test finite_response(mat, M.JohnsonCookMP, 1.0, 1.0)[1] ≈ 0 atol = 1e-8
+                @test finite_response(mat, M.JohnsonCookMP, 1.01, 1.0)[2] > 0
+            end
+
+            @testset "a faster load gives a higher stress" begin
+                slow, medium, fast = (finite_response(mat, M.JohnsonCookMP, 1.05, t)[1] for t in (1e3, 1.0, 1e-3))
+                @test fast > medium > slow
+            end
+
+            @testset "a higher temperature gives a lower stress" begin
+                stress(T) = finite_response(M.JohnsonCookMaterial(jc(T = T)), M.JohnsonCookMP, 1.05, 1.0)[1]
+                @test stress(293.0) > stress(600.0) > stress(1000.0)
+            end
+
+            @testset "MUESLI's own consistency test" begin
+                # without the derivative of the energy, which MUESLI skips for this model too
+                @test M.testImplementation(M.JohnsonCookMP(mat), false, true)
+            end
+        end
+
+        @testset "Zerilli-Armstrong" begin
+            za(; T = 293.0) = properties("young" => 124e3, "poisson" => 0.34, "density" => 8.9e-9,
+                                         "c0" => 20.0, "c1" => 0.0, "c2" => 600.0, "c3" => 0.005, "c4" => 0.0003,
+                                         "c5" => 0.0, "n" => 0.5, "temp" => T)
+            mat = M.ZerilliArmstrongMaterial(za())
+            @test M.check(mat)
+            @testset "the density is the one that was set" begin
+                # MUESLI's own density() returns a member no constructor initialises
+                @test M.density(mat) ≈ 8.9e-9
+            end
+            @test M.cxxCreateMaterialPoint(mat) isa M.ZerilliArmstrongMP
+
+            @testset "yielding" begin
+                @test finite_response(mat, M.ZerilliArmstrongMP, 1.0001, 1.0)[2] == 0
+                @test finite_response(mat, M.ZerilliArmstrongMP, 1.01, 1.0)[2] > 0
+            end
+
+            @testset "a faster load gives a higher stress" begin
+                slow, medium, fast = (finite_response(mat, M.ZerilliArmstrongMP, 1.05, t)[1] for t in (1e3, 1.0, 1e-3))
+                @test fast > medium > slow
+            end
+
+            @testset "a higher temperature gives a lower stress" begin
+                stress(T) = finite_response(M.ZerilliArmstrongMaterial(za(T = T)), M.ZerilliArmstrongMP, 1.05, 1.0)[1]
+                @test stress(200.0) > stress(293.0) > stress(500.0)
+            end
+
+            @testset "MUESLI's own consistency test" begin
+                @test M.testImplementation(M.ZerilliArmstrongMP(mat), false, true)
+            end
+        end
+
+        @testset "viscoplasticity with nonlinear hardening" begin
+            function vp(; eta = 1.0)
+                p = properties("young" => 210e3, "poisson" => 0.3, "density" => 7.8e-9,
+                               "isotropich" => 1000.0, "isohardinf" => 100.0, "isohardzero" => 0.0,
+                               "isoharddelta" => 1.0, "kinematich" => 0.0, "yieldstress" => 300.0,
+                               "eta" => eta, "viscousexponent" => 1.0, "alpha" => 0.5)
+                M.setString!(p, "plasticity", "mises")
+                return p
+            end
+            mat = M.ViscoplasticNLMaterial(vp())
+            @test M.check(mat)
+            @testset "the density is the one that was set" begin
+                @test M.density(mat) ≈ 7.8e-9
+            end
+            @test M.cxxCreateMaterialPoint(mat) isa M.ViscoplasticNLMP
+
+            function small_response(ε11, t)
+                mp = M.ViscoplasticNLMP(mat)
+                M.updateCurrentState(mp, t, M.Istensor([ε11 0.0 0.0; 0.0 0.0 0.0; 0.0 0.0 0.0]))
+                σ = M.Istensor()
+                M.stress!(mp, σ)
+                return mat3(σ)[1, 1], M.plasticSlip(mp)
+            end
+
+            @test small_response(1e-4, 1.0)[2] == 0
+            @test small_response(2e-2, 1.0)[2] > 0
+            @testset "a faster load gives a higher stress" begin
+                slow, medium, fast = (small_response(2e-2, t)[1] for t in (1e3, 1.0, 1e-3))
+                @test fast > medium ≥ slow
+            end
+            @test M.testImplementation(M.ViscoplasticNLMP(mat), true, true)
+        end
+    end
+
+    @testset "Reduced models: bar, beam, shell and plane stress" begin
+        G = E / (2 * (1 + ν))
+        voigt = ((1, 1), (2, 2), (3, 3), (2, 3), (1, 3), (1, 2))
+
+        # reduced point, 3D point it wraps, and the full strain/stress after the update
+        function reduced_response(R, ε; method = nothing)
+            mat = M.ElasticIsotropicMaterial(E, ν)
+            mp3 = M.ElasticIsotropicMP(mat)
+            rmp = method === nothing ? R(mp3) : R(mp3, method)
+            ε3 = M.Istensor(ε)
+            M.updateCurrentState!(rmp, 1.0, ε3)
+            σ = M.Istensor()
+            M.stress!(rmp, σ)
+            C = zeros(6, 6)
+            M.tangentMatrix!(rmp, C)
+            GC.@preserve mp3 mat (mat3(ε3), mat3(σ), C)
+        end
+
+        ε = [1e-3 4e-4 2e-4; 4e-4 -5e-4 3e-4; 2e-4 3e-4 7e-4]
+
+        @testset "bar: only the axial stress survives" begin
+            ε1 = zeros(3, 3); ε1[1, 1] = 1e-3
+            εf, σ, C = reduced_response(M.SbarMP, ε1)
+            @test εf[2, 2] ≈ -ν * 1e-3 && εf[3, 3] ≈ -ν * 1e-3
+            @test σ[1, 1] ≈ E * 1e-3
+            @test count(>(1e-9), abs.(σ)) == 1
+            @test C[1, 1] ≈ E
+            @test count(>(1e-9), abs.(C)) == 1
+        end
+
+        @testset "plane stress and shell: S33 = 0" begin
+            for R in (M.SplaneMP, M.SshellMP)
+                εf, σ, C = reduced_response(R, ε)
+                @test εf[3, 3] ≈ -ν / (1 - ν) * (ε[1, 1] + ε[2, 2])
+                @test σ[3, 3] ≈ 0 atol = 1e-6
+                @test C[1, 1] ≈ E / (1 - ν^2)
+                @test C[1, 2] ≈ ν * E / (1 - ν^2)
+            end
+            # the plane model also drops the out-of-plane shears, the shell keeps them
+            _, σp, Cp = reduced_response(M.SplaneMP, ε)
+            _, σs, Cs = reduced_response(M.SshellMP, ε)
+            @test σp[2, 3] ≈ 0 atol = 1e-6
+            @test σp[1, 3] ≈ 0 atol = 1e-6
+            @test σs[2, 3] ≈ 2G * ε[2, 3]
+            @test Cp[4, 4] == 0 && Cs[4, 4] ≈ G
+        end
+
+        @testset "beam: S11 = S22 = S12 = 0" begin
+            εf, σ, C = reduced_response(M.SbeamMP, ε)
+            @test all(abs(σ[i, j]) < 1e-6 for (i, j) in ((1, 1), (2, 2), (1, 2)))
+            @test σ[3, 3] ≈ E * ε[3, 3]
+            @test C[3, 3] ≈ E && C[4, 4] ≈ G && C[5, 5] ≈ G
+            @test C[1, 1] == 0
+        end
+
+        @testset "the prescribed strain components are not changed" begin
+            εf, = reduced_response(M.SplaneMP, ε)
+            for (i, j) in ((1, 1), (2, 2), (1, 2))
+                @test εf[i, j] ≈ ε[i, j]
+            end
+        end
+
+        @testset "nonlinear conjugate gradient gives the same answer" begin
+            @test reduced_response(M.SbeamMP, ε; method = "nlcg")[2] ≈ reduced_response(M.SbeamMP, ε)[2] atol = 1e-6
+        end
+
+        @testset "inherited from the family root" begin
+            mat = M.ElasticIsotropicMaterial(E, ν)
+            mp3 = M.ElasticIsotropicMP(mat)
+            rmp = M.SplaneMP(mp3)
+            @test rmp isa M.ReducedSmallStrainMP
+            M.updateCurrentState!(rmp, 1.0, M.Istensor(ε))
+            @test M.storedEnergy(rmp) > 0
+            @test M.density(rmp) == M.density(mat)
+            M.commitCurrentState(rmp)
+            @test M.testImplementation(rmp)
+            GC.@preserve mp3 mat nothing
+        end
+
+        @testset "finite strain bar with a Saint Venant-Kirchhoff material" begin
+            mat = M.SVKMaterial(properties("young" => E, "poisson" => ν))
+            mp3 = M.SVKMP(mat)
+            rmp = M.FbarMP(mp3)
+            @test rmp isa M.ReducedFiniteStrainMP
+            F = M.Itensor([1.1 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0])
+            M.updateCurrentState!(rmp, 1.0, F)
+            S = M.Istensor()
+            M.secondPiolaKirchhoffStress!(rmp, S)
+            S = mat3(S)
+            E11 = (1.1^2 - 1) / 2
+            @test S[1, 1] ≈ E * E11
+            @test all(abs(S[i, j]) < 1e-6 for (i, j) in voigt[2:end])
+            # the solved transverse stretch is the one of uniaxial stress
+            Fa = mat3(F)
+            @test Fa[2, 2] ≈ Fa[3, 3] && Fa[2, 2] < 1
+            C = zeros(6, 6)
+            M.convectedTangentMatrix!(rmp, C)
+            @test C[1, 1] ≈ E
+            GC.@preserve mp3 mat nothing
+        end
+
+        @testset "finite strain shell, plane and beam" begin
+            mat = M.NeoHookeMaterial(properties("young" => E, "poisson" => ν))
+            F0 = [1.05 0.02 0.0; 0.01 0.97 0.0; 0.0 0.0 1.0]
+            Fr = [1.05 0.02 0.01; 0.01 0.97 0.02; 0.0 0.01 0.98]
+            for (R, zeros_) in ((M.FshellMP, ((3, 3),)),
+                                (M.FplaneMP, ((3, 3), (2, 3), (1, 3))),
+                                (M.FbeamMP, ((1, 1), (2, 2), (1, 2))))
+                mp3 = M.NeoHookeMP(mat)
+                rmp = R(mp3)
+                F = M.Itensor(Fr)
+                M.updateCurrentState!(rmp, 1.0, F)
+                S = M.Istensor()
+                M.secondPiolaKirchhoffStress!(rmp, S)
+                S = mat3(S)
+                @test all(abs(S[i, j]) < 1e-6 * E for (i, j) in zeros_)
+                @test M.testImplementation(rmp, true, true)
+                GC.@preserve mp3 nothing
+            end
+        end
+    end
 end

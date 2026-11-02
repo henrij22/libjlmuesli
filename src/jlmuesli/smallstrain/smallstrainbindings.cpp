@@ -68,6 +68,9 @@ void registerSmallStrainBase(jlcxx::Module& mod) {
       .method("getCurrentPlasticStrain",
               [](const smallStrainMP& mp) -> istensor { return mp.getCurrentPlasticStrain(); })
 
+      // Self test
+      .method("testImplementation",
+              [](const smallStrainMP& mp, bool testDE, bool testDDE) { return runSelfTest(mp, testDE, testDDE); })
       // Bookkeeping (commit/reset/get*State are on MaterialPoint)
       .method("updateCurrentState",
               [](smallStrainMP& mp, double t, const istensor& strain) { mp.updateCurrentState(t, strain); });

@@ -13,6 +13,13 @@
 
 #include <julia.h>
 
+// viscoplasticnlMaterial::density() returns a member that no constructor initialises
+template <>
+struct ConcreteMaterial<muesli::viscoplasticnlMaterial>
+{
+  using type = WithBaseDensity<muesli::viscoplasticnlMaterial>;
+};
+
 // smallstrainbindings.cpp: the family roots and everything they share
 void registerSmallStrainBase(jlcxx::Module& mod);
 
@@ -26,9 +33,11 @@ std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> addSm
   using jlcxx::arg;
 
   auto mat = mod.add_type<Material>(name + "Material", jlcxx::julia_base_type<MaterialBase>());
-  mat.constructor([muesliName = muesliMaterialName(name)](
-                      const MaterialProperties& properties) { return new Material{muesliName, properties.multiMap()}; },
-                  arg("properties"));
+  mat.constructor(
+      [muesliName = muesliMaterialName(name)](const MaterialProperties& properties) {
+        return static_cast<Material*>(new typename ConcreteMaterial<Material>::type{muesliName, properties.multiMap()});
+      },
+      arg("properties"));
 
   auto mp = mod.add_type<MaterialPoint>(name + "MP", jlcxx::julia_base_type<MaterialPointBase>())
                 .constructor([](const Material& m) { return new MaterialPoint(m); });
@@ -201,4 +210,6 @@ inline void registerSmallStrainMaterials(jlcxx::Module& mod) {
                        double xR_b, double xa,
                        double xb) { return new Material{"LemKin", E, nu, rho, r, s, yield, xR_inf, xR_b, xa, xb}; });
   }
+
+  addSmallStrainMaterial<muesli::viscoplasticnlMaterial, muesli::viscoplasticnlMP>(mod, "ViscoplasticNL");
 }

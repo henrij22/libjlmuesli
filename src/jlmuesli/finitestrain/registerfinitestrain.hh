@@ -15,6 +15,13 @@
 
 #include <jlcxx/jlcxx.hpp>
 
+// zerilliArmstrongMaterial::density() returns a member that no constructor initialises
+template <>
+struct ConcreteMaterial<muesli::zerilliArmstrongMaterial>
+{
+  using type = WithBaseDensity<muesli::zerilliArmstrongMaterial>;
+};
+
 // finitestrainbindings.cpp: the family roots and everything they share
 void registerFiniteStrainBase(jlcxx::Module& mod);
 
@@ -27,9 +34,11 @@ std::pair<jlcxx::TypeWrapper<Material>, jlcxx::TypeWrapper<MaterialPoint>> addFi
   using jlcxx::arg;
 
   auto mat = mod.add_type<Material>(name + "Material", jlcxx::julia_base_type<MaterialBase>());
-  mat.constructor([muesliName = muesliMaterialName(name)](
-                      const MaterialProperties& properties) { return new Material{muesliName, properties.multiMap()}; },
-                  arg("properties"));
+  mat.constructor(
+      [muesliName = muesliMaterialName(name)](const MaterialProperties& properties) {
+        return static_cast<Material*>(new typename ConcreteMaterial<Material>::type{muesliName, properties.multiMap()});
+      },
+      arg("properties"));
 
   auto mp = mod.add_type<MaterialPoint>(name + "MP", jlcxx::julia_base_type<MaterialPointBase>())
                 .constructor([](const Material& m) { return new MaterialPoint(m); });
@@ -134,4 +143,9 @@ inline void registerFiniteStrainMaterials(jlcxx::Module& mod) {
               [](MaterialPoint& mp, double theTime, const itensor& F, double iso, const ivector& kine,
                  const istensor& be) { mp.setConvergedState(theTime, F, iso, kine, be); });
   }
+
+  // The materials below are built from a MaterialProperties map. Their positional constructors
+  // in MUESLI are not exposed: the Johnson-Cook one ignores its melting temperature argument.
+  addFiniteStrainMaterial<muesli::johnsonCookMaterial, muesli::johnsonCookMP>(mod, "JohnsonCook");
+  addFiniteStrainMaterial<muesli::zerilliArmstrongMaterial, muesli::zerilliArmstrongMP>(mod, "ZerilliArmstrong");
 }
