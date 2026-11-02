@@ -23,3 +23,8 @@ set(JLMUESLI_SOURCES
 set_target_properties(${JLCXX_TARGET} PROPERTIES PUBLIC_HEADER "${JLMUESLI_HEADERS}")
 
 add_library(jlmuesli SHARED ${JLMUESLI_SOURCES})
+
+if(MINGW)
+  # the templated jlcxx registration produces object files with more sections than COFF allows by default
+  target_compile_options(jlmuesli PRIVATE -Wa,-mbig-obj)
+endif()
